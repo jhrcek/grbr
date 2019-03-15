@@ -16,6 +16,8 @@ dependencies:
 - base >= 4.7 && < 5
 - fgl
 - graphviz
+- scotty
+- text
 
 library:
   source-dirs: src
