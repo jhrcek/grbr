@@ -13,8 +13,11 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Text
 
 type MyGraph = Gr NodeLabel EdgeLabel
+
 type NodeLabel = Text
+
 type EdgeLabel = ()
+
 type ClusterLabel = ()
 
 example :: MyGraph
