@@ -6,14 +6,14 @@ module Elm.Analyse
     ( loadModuleDependencies
     ) where
 
-import Data.Aeson
+import Data.Aeson (FromJSON, decodeFileStrict')
 import Data.Graph.Inductive.Graph (mkGraph)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 import GHC.Generics (Generic)
-import Graph
+import Graph.Types (MyGraph)
 
 -- input is file X obtained by running "elm-analyse --format json > X"
 loadModuleDependencies :: FilePath -> IO MyGraph

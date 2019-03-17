@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Graph
+module Graph.Types
   ( MyGraph
   , NodeLabel
   , EdgeLabel

@@ -14,11 +14,9 @@ description:         Please see the README on GitHub at <https://github.com/jhrc
 
 dependencies:
 - base >= 4.7 && < 5
-- containers
 - fgl
-- graphviz
-- scotty
 - text
+
 ghc-options:
 - -Wall
 
@@ -26,6 +24,9 @@ library:
   source-dirs: src
   dependencies:
     - aeson
+    - containers
+    - graphviz
+    - optparse-applicative
 
 executables:
   grbr-exe:
@@ -37,6 +38,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - grbr
+    - scotty
 
 tests:
   grbr-test:

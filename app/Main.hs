@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
@@ -6,11 +7,14 @@ import Data.Graph.Inductive.Graph (order)
 import Data.Text.Lazy (pack)
 import Elm.Analyse (loadModuleDependencies)
 import Graph.Builder (generateNodeContext, generateWholeGraph, getNeighborhood)
-import Web.Scotty
+import Options (Options (..))
+import qualified Options
+import Web.Scotty (file, get, param, scotty, text)
 
 main :: IO ()
 main = do
-  modDepsGraph <- loadModuleDependencies "nss.json"
+  Options{inputFile} <- Options.parse
+  modDepsGraph <- loadModuleDependencies inputFile
   scotty 3000 $ do
       get "/" $
           generateWholeGraph modDepsGraph >>= file

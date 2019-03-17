@@ -19,7 +19,7 @@ import Data.GraphViz.Commands (GraphvizOutput (Svg), runGraphviz)
 import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs))
 import qualified Data.IntSet as Set
 import Data.Text.Lazy (fromStrict, pack)
-import Graph (ClusterLabel, EdgeLabel, MyGraph, NodeLabel)
+import Graph.Types (ClusterLabel, EdgeLabel, MyGraph, NodeLabel)
 
 generateWholeGraph :: MonadIO io => MyGraph -> io FilePath
 generateWholeGraph =
