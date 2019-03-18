@@ -9,12 +9,14 @@ import Elm.Analyse (loadModuleDependencies)
 import Graph.Builder (generateNodeContext, generateWholeGraph, getNeighborhood)
 import Options (Options (..))
 import qualified Options
+import Web.Browser (openBrowser)
 import Web.Scotty (file, get, param, scotty, text)
 
 main :: IO ()
 main = do
   Options{inputFile} <- Options.parse
   modDepsGraph <- loadModuleDependencies inputFile
+  _ <- openBrowser "http://localhost:3000"
   scotty 3000 $ do
       get "/" $
           generateWholeGraph modDepsGraph >>= file

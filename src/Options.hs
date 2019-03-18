@@ -12,12 +12,11 @@ newtype Options = Options
 parse :: IO Options
 parse = execParser $ info (sample <**> helper)
     ( fullDesc
-   <> progDesc "Print a greeting for TARGET"
-   <> header "hello - a test for optparse-applicative" )
+   <> progDesc "Browser of module dependency graph of Elm projects"
+   <> header "Graph Browser" )
 
 sample :: Parser Options
 sample = Options
-  <$> strOption
-      ( long "infile"
-     <> metavar "FILE"
-     <> help "File that is the result of 'elm-analyse --format json'" )
+  <$> strArgument
+      ( metavar "FILE"
+     <> help "File which is the result of 'elm-analyse --format json'" )

@@ -13,6 +13,7 @@ import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 import GHC.Generics (Generic)
+import System.Exit (die)
 import Graph.Types (MyGraph)
 
 -- input is file X obtained by running "elm-analyse --format json > X"
@@ -20,7 +21,8 @@ loadModuleDependencies :: FilePath -> IO MyGraph
 loadModuleDependencies resultsFile = do
     maybeAnalysisResult <- decodeFileStrict' resultsFile
     case maybeAnalysisResult of
-        Nothing -> error $ "Failed to load analysis result from file : " <> resultsFile
+        Nothing -> die $ "Failed to load analysis result from file : " <> resultsFile <>
+                        "\nIs this valid json file produced by 'elm-analyse --format json'?"  
         Just analysisResult -> return $ toGraph analysisResult
 
 newtype AnalysisResult = AnalysisResult

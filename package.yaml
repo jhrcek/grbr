@@ -29,7 +29,7 @@ library:
     - optparse-applicative
 
 executables:
-  grbr-exe:
+  grbr:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -39,6 +39,7 @@ executables:
     dependencies:
     - grbr
     - scotty
+    - open-browser
 
 tests:
   grbr-test:
