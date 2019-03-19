@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import Data.Graph.Inductive.Graph (order)
+import Data.Graph.Inductive.Graph (order, size)
 import Data.Text.Lazy (pack)
 import Elm.Analyse (loadModuleDependencies)
 import Graph.Builder (generateNodeContext, generateWholeGraph, getNeighborhood)
@@ -16,6 +16,8 @@ main :: IO ()
 main = do
   Options{inputFile} <- Options.parse
   modDepsGraph <- loadModuleDependencies inputFile
+  putStrLn $ "Loaded dependency graph with " <> show (order modDepsGraph)
+         <> " nodes and " <> show (size modDepsGraph) <> " edges"
   _ <- openBrowser "http://localhost:3000"
   scotty 3000 $ do
       get "/" $
