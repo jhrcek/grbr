@@ -4,25 +4,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Elm.Analyse
     ( loadModuleDependencies
+    , getNodeAndEdgeCounts
     ) where
 
 import Data.Aeson (FromJSON, decodeFileStrict')
-import Data.Graph.Inductive.Graph (mkGraph)
+import Data.Graph.Inductive.Graph (mkGraph, order, size)
+import qualified Data.IntSet as IntSet
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import GHC.Generics (Generic)
+import Graph.Types (ModuleDependencies (..), mkNodeLabel)
 import System.Exit (die)
-import Graph.Types (MyGraph)
 
 -- input is file X obtained by running "elm-analyse --format json > X"
-loadModuleDependencies :: FilePath -> IO MyGraph
+loadModuleDependencies :: FilePath -> IO ModuleDependencies
 loadModuleDependencies resultsFile = do
     maybeAnalysisResult <- decodeFileStrict' resultsFile
     case maybeAnalysisResult of
         Nothing -> die $ "Failed to load analysis result from file : " <> resultsFile <>
-                        "\nIs this valid json file produced by 'elm-analyse --format json'?"  
+                        "\nIs this valid json file produced by 'elm-analyse --format json'?"
         Just analysisResult -> return $ toGraph analysisResult
 
 newtype AnalysisResult = AnalysisResult
@@ -40,17 +43,22 @@ newtype Module = Module [Text]
 moduleName :: Module -> Text
 moduleName (Module xs) = Text.intercalate "." xs
 
-toGraph :: AnalysisResult -> MyGraph
+toGraph :: AnalysisResult -> ModuleDependencies
 toGraph AnalysisResult{modules} =
-    mkGraph nodes edges
+    ModuleDependencies { depGraph = mkGraph nodes edges }
   where
     nameToIdMap = foldr
         (\(module1, module2) map0 ->
             let map1 = insertUniqueId module1 (Map.size map0) map0
             in         insertUniqueId module2 (Map.size map1) map1
         ) Map.empty (dependencies modules)
-    nodes = (\(module_, mid) -> (mid, moduleName module_)) <$> Map.toList nameToIdMap
+    appModules = IntSet.fromList $ mapMaybe (\m -> Map.lookup m nameToIdMap) (projectModules modules)
+    nodes = (\(module_, mid) -> (mid, mkNodeLabel (moduleName module_) (IntSet.member mid appModules))) <$> Map.toList nameToIdMap
     edges = (\(module1, module2) -> (nameToIdMap Map.! module1, nameToIdMap Map.! module2, ())) <$> dependencies modules
 
 insertUniqueId :: Ord k => k -> v -> Map k v -> Map k v
 insertUniqueId = Map.insertWith (\_newVal oldVal -> oldVal)
+
+getNodeAndEdgeCounts :: ModuleDependencies -> (Int, Int)
+getNodeAndEdgeCounts ModuleDependencies{depGraph} =
+    (order depGraph, size depGraph)
