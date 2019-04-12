@@ -4,7 +4,8 @@ module Graph.Types
   , EdgeLabel
   , ClusterLabel
   , DepGraph
-  , labelText
+  , moduleName
+  , packageName
   , isAppModule
   , mkNodeLabel
   ) where
@@ -19,12 +20,13 @@ data ModuleDependencies = ModuleDependencies
 type DepGraph = Gr NodeLabel EdgeLabel
 
 data NodeLabel = NodeLabel
-    { labelText   :: Text
+    { moduleName  :: Text --e.g. "Html.Attributes"
+    , packageName :: Maybe Text
     -- True for Modules belonging to the analyzed app, False for modules from dependencies
     , isAppModule :: Bool
     }
 
-mkNodeLabel :: Text -> Bool -> NodeLabel
+mkNodeLabel :: Text ->  Maybe Text -> Bool -> NodeLabel
 mkNodeLabel = NodeLabel
 
 type EdgeLabel = ()

@@ -12,16 +12,16 @@ import Data.GraphViz (GraphvizParams, defaultParams, fmtNode, globalAttributes,
                       graphToDot)
 import Data.GraphViz.Algorithms (transitiveReduction)
 import Data.GraphViz.Attributes (fillColor, filled, shape, style)
-import Data.GraphViz.Attributes.Colors.SVG (SVGColor (LightBlue, LightSalmon))
+import Data.GraphViz.Attributes.Colors.SVG (SVGColor (..))
 import Data.GraphViz.Attributes.Complete (Attribute (Label, RankDir, URL),
                                           Label (StrLabel), RankDir (FromLeft),
-                                          Shape (BoxShape))
+                                          Shape (Box3D, BoxShape, Ellipse))
 import Data.GraphViz.Commands (GraphvizOutput (Svg), runGraphviz)
 import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs))
+import Data.Maybe (fromMaybe)
 import Data.Text.Lazy (fromStrict, pack)
 import Graph.Types (ClusterLabel, DepGraph, EdgeLabel, ModuleDependencies (..),
-                    NodeLabel, isAppModule, labelText)
-
+                    NodeLabel, isAppModule, moduleName, packageName)
 
 generateWholeGraph :: MonadIO io => ModuleDependencies -> io FilePath
 generateWholeGraph ModuleDependencies{depGraph} =
@@ -50,19 +50,48 @@ graphVizParams :: GeneratorParams -> GvParams
 graphVizParams GeneratorParams{centralNode} = defaultParams
     { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
     , fmtNode = \(nodeId, nodeLabel) ->
-        highlightNode nodeId nodeLabel ++
-        [ shape BoxShape
-        , URL $ "/node/" <> pack (show nodeId)
-        , Label . StrLabel . fromStrict $ labelText nodeLabel
+        [ URL $ "/node/" <> pack (show nodeId)
+        , toLabelAttr nodeLabel
+        , toColorAttr nodeLabel
+        , toShapeAttr centralNode nodeId nodeLabel
+        , style filled
         ]
     }
-    where
-      highlightNode nodeId nodeLabel = case centralNode of
-          Just centralNodeId
-              | nodeId == centralNodeId -> [style filled, fillColor LightSalmon]
-          _   | isAppModule nodeLabel   -> [style filled, fillColor LightBlue]
-              | otherwise               -> []
 
+toShapeAttr :: Maybe Node -> Node -> NodeLabel  -> Attribute
+toShapeAttr mCentralNode nodeId nodeLabel = shape $ case mCentralNode of
+    Just centralNodeId
+        | nodeId == centralNodeId -> Box3D
+    _   | isAppModule nodeLabel   -> BoxShape
+        | otherwise               -> Ellipse
+
+toLabelAttr :: NodeLabel -> Attribute
+toLabelAttr nodeLabel =
+    Label . StrLabel . fromStrict $ moduleName nodeLabel <> optionalPkgName
+  where
+    optionalPkgName = case packageName nodeLabel of
+        Nothing      -> ""
+        Just pkgName -> "\n<" <> pkgName <> ">"
+
+toColorAttr :: NodeLabel -> Attribute
+toColorAttr nodeLabel = fillColor $ fromMaybe White $ do
+    pkg <- packageName nodeLabel
+    lookup pkg
+        [ ("_factories", LightBlue)
+        , ("_share", LightCoral)
+        , ("app-monolithic", LightCyan)
+        , ("audience-builder", LightGoldenrodYellow)
+        , ("chart-builder",  LightGray)
+        , ("components", LightGreen)
+        , ("dashboards", LightPink)
+        , ("fullscreen-search", LightSalmon)
+        , ("gwiq", LightSeaGreen)
+        , ("products", LightSkyBlue)
+        , ("query-builder", LightSlateGray)
+        , ("settings", LightSteelBlue)
+        , ("tv-elm", LightYellow)
+        , ("tv-study", LightCyan)
+        ]
 
 data GeneratorParams = GeneratorParams
   { centralNode               :: Maybe Node
