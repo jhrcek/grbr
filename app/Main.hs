@@ -5,11 +5,11 @@ module Main where
 
 import Data.Text.Lazy (pack)
 import Elm.Analyse (getNodeAndEdgeCounts, loadModuleDependencies)
-import Graph.Builder (generateNodeContext, generateWholeGraph, getNeighborhood)
+import Graph.Builder (GeneratorParams (..), generateGraphFile,  getNeighborhood)
 import Options (Options (..))
 import qualified Options
 import Web.Browser (openBrowser)
-import Web.Scotty (file, get, param, scotty, text)
+import Web.Scotty (ActionM, file, get, param, rescue, scotty, text)
 
 main :: IO ()
 main = do
@@ -20,11 +20,35 @@ main = do
          <> " nodes and " <> show edgeCount <> " edges"
   _ <- openBrowser "http://localhost:3000"
   scotty 3000 $ do
-      get "/" $
-          generateWholeGraph modDeps >>= file
+      get "/" $ do
+          params <- getGeneratorParams
+          generateGraphFile params modDeps >>= file
       get "/node/:nodeId" $ do
-          nodeId <- param "nodeId"
-          case getNeighborhood nodeId modDeps of
-              Nothing -> text $ "This graph doesn't have node with ID " <> pack (show nodeId)
-                             <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
-              Just neighborhood -> generateNodeContext nodeId neighborhood >>= file
+          params <- getGeneratorParams
+          case centralNode params of
+              Nothing -> text "You must provide node ID in the URL!"
+              Just nodeId ->
+                  case getNeighborhood nodeId modDeps of
+                      Nothing -> text $ "This graph doesn't have node with ID " <> pack (show nodeId)
+                                     <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
+                      Just neighborhood -> generateGraphFile params neighborhood >>= file
+
+getGeneratorParams :: ActionM GeneratorParams
+getGeneratorParams = do
+    mNodeId <- getNodeIdParam
+    isCluster <- getClusterParam
+    isTred <- getTredParam
+    return $ GeneratorParams
+        { centralNode = mNodeId
+        , enableTransitiveReduction = isTred
+        , clusteringEnabled = isCluster
+        }
+
+getClusterParam :: ActionM Bool
+getClusterParam = param "cluster" `rescue` (\_err -> pure False)
+
+getTredParam :: ActionM Bool
+getTredParam = param "tred" `rescue` (\_err -> pure True)
+
+getNodeIdParam :: ActionM (Maybe Int)
+getNodeIdParam = (Just <$> param "nodeId") `rescue` (\_err -> pure Nothing)

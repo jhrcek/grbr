@@ -1,14 +1,15 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Graph.Builder
-    ( generateWholeGraph
-    , generateNodeContext
+    ( GeneratorParams (..)
+    , generateGraphFile
     , getNeighborhood
     ) where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Graph.Inductive.Graph (Node, gelem, neighbors, subgraph)
-import Data.GraphViz (GraphvizParams, defaultParams, fmtNode, globalAttributes,
+import Data.GraphViz (GraphvizParams, NodeCluster (C, N), clusterBy, clusterID,
+                      defaultParams, fmtCluster, fmtNode, globalAttributes,
                       graphToDot)
 import Data.GraphViz.Algorithms (transitiveReduction)
 import Data.GraphViz.Attributes (fillColor, filled, shape, style)
@@ -17,46 +18,47 @@ import Data.GraphViz.Attributes.Complete (Attribute (Label, RankDir, URL),
                                           Label (StrLabel), RankDir (FromLeft),
                                           Shape (Box3D, BoxShape, Ellipse))
 import Data.GraphViz.Commands (GraphvizOutput (Svg), runGraphviz)
-import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs))
+import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs),
+                                        GraphID (Str))
 import Data.Maybe (fromMaybe)
 import Data.Text.Lazy (fromStrict, pack)
-import Graph.Types (ClusterLabel, DepGraph, EdgeLabel, ModuleDependencies (..),
-                    NodeLabel, isAppModule, moduleName, packageName)
+import Graph.Types (ClusterLabel, EdgeLabel, ModuleDependencies (..), NodeLabel,
+                    isAppModule, moduleName, packageName)
 
-generateWholeGraph :: MonadIO io => ModuleDependencies -> io FilePath
-generateWholeGraph ModuleDependencies{depGraph} =
-    generateGraphFile (mkGeneratorParams Nothing True) depGraph
-
-generateNodeContext :: MonadIO io => Node ->  ModuleDependencies -> io FilePath
-generateNodeContext nodeId ModuleDependencies{depGraph} =
-    generateGraphFile (mkGeneratorParams (Just nodeId) True) depGraph
-
-generateGraphFile :: MonadIO io => GeneratorParams -> DepGraph -> io FilePath
-generateGraphFile genParams g =
+generateGraphFile :: MonadIO io => GeneratorParams -> ModuleDependencies -> io FilePath
+generateGraphFile genParams ModuleDependencies{depGraph} =
      liftIO $ runGraphviz dotGraph Svg "graph.svg"
    where
      gvParams = graphVizParams genParams
-     dotGraph = applyTred $ graphToDot gvParams g
+     dotGraph = applyTred $ graphToDot gvParams depGraph
      applyTred = if enableTransitiveReduction genParams then transitiveReduction else id
 
 getNeighborhood :: Node -> ModuleDependencies -> Maybe ModuleDependencies
-getNeighborhood nodeId md@(ModuleDependencies{depGraph})
-    | gelem nodeId depGraph = Just $ md { depGraph = subgraph (nodeId : neighbors depGraph nodeId) depGraph }
+getNeighborhood nodeId md@ModuleDependencies{depGraph}
+    | nodeId `gelem` depGraph = Just $ md { depGraph = subgraph (nodeId : neighbors depGraph nodeId) depGraph }
     | otherwise = Nothing
 
 type GvParams = GraphvizParams Node NodeLabel EdgeLabel ClusterLabel NodeLabel
 
 graphVizParams :: GeneratorParams -> GvParams
-graphVizParams GeneratorParams{centralNode} = defaultParams
+graphVizParams GeneratorParams{centralNode, clusteringEnabled} = defaultParams
     { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
     , fmtNode = \(nodeId, nodeLabel) ->
         [ URL $ "/node/" <> pack (show nodeId)
-        , toLabelAttr nodeLabel
+        , toLabelAttr clusteringEnabled nodeLabel
         , toColorAttr nodeLabel
         , toShapeAttr centralNode nodeId nodeLabel
         , style filled
         ]
+    , clusterBy = if clusteringEnabled then clusterByPackage else clusterBy defaultParams
+    , clusterID = if clusteringEnabled then Str .fromStrict else clusterID defaultParams
+    , fmtCluster = if clusteringEnabled then \pkgName -> [ GraphAttrs [ Label (StrLabel (fromStrict pkgName))]] else fmtCluster defaultParams
     }
+
+clusterByPackage :: (Node, NodeLabel)  -> NodeCluster ClusterLabel (Node, NodeLabel)
+clusterByPackage pair@(_, nodeLabel) = case packageName nodeLabel of
+    Nothing      -> N pair
+    Just pkgName -> C pkgName $ N pair
 
 toShapeAttr :: Maybe Node -> Node -> NodeLabel  -> Attribute
 toShapeAttr mCentralNode nodeId nodeLabel = shape $ case mCentralNode of
@@ -65,13 +67,13 @@ toShapeAttr mCentralNode nodeId nodeLabel = shape $ case mCentralNode of
     _   | isAppModule nodeLabel   -> BoxShape
         | otherwise               -> Ellipse
 
-toLabelAttr :: NodeLabel -> Attribute
-toLabelAttr nodeLabel =
+toLabelAttr :: Bool -> NodeLabel -> Attribute
+toLabelAttr clusteringEnabled nodeLabel =
     Label . StrLabel . fromStrict $ moduleName nodeLabel <> optionalPkgName
   where
-    optionalPkgName = case packageName nodeLabel of
-        Nothing      -> ""
-        Just pkgName -> "\n<" <> pkgName <> ">"
+    optionalPkgName = case (clusteringEnabled, packageName nodeLabel) of
+        (False, Just pkgName) -> "\n<" <> pkgName <> ">"
+        _                     -> ""
 
 toColorAttr :: NodeLabel -> Attribute
 toColorAttr nodeLabel = fillColor $ fromMaybe White $ do
@@ -96,7 +98,5 @@ toColorAttr nodeLabel = fillColor $ fromMaybe White $ do
 data GeneratorParams = GeneratorParams
   { centralNode               :: Maybe Node
   , enableTransitiveReduction :: Bool
+  , clusteringEnabled         :: Bool
   }
-
-mkGeneratorParams :: Maybe Node -> Bool -> GeneratorParams
-mkGeneratorParams = GeneratorParams

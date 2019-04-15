@@ -13,7 +13,7 @@ module Graph.Types
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Text (Text)
 
-data ModuleDependencies = ModuleDependencies
+newtype ModuleDependencies = ModuleDependencies
     { depGraph   :: DepGraph
     }
 
@@ -31,4 +31,4 @@ mkNodeLabel = NodeLabel
 
 type EdgeLabel = ()
 
-type ClusterLabel = ()
+type ClusterLabel = Text
