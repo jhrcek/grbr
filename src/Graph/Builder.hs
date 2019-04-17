@@ -7,7 +7,9 @@ module Graph.Builder
     ) where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import qualified Data.Graph.Inductive.Basic as G
 import Data.Graph.Inductive.Graph (Node, gelem, neighbors, subgraph)
+import qualified Data.Graph.Inductive.Graph as G
 import Data.GraphViz (GraphvizParams, NodeCluster (C, N), clusterBy, clusterID,
                       defaultParams, fmtCluster, fmtNode, globalAttributes,
                       graphToDot)
@@ -20,18 +22,34 @@ import Data.GraphViz.Attributes.Complete (Attribute (Label, RankDir, URL),
 import Data.GraphViz.Commands (GraphvizOutput (Svg), runGraphviz)
 import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs),
                                         GraphID (Str))
+import Data.Maybe (isJust)
 import Data.Maybe (fromMaybe)
 import Data.Text.Lazy (fromStrict, pack)
-import Graph.Types (ClusterLabel, EdgeLabel, ModuleDependencies (..), NodeLabel,
-                    isAppModule, moduleName, packageName)
+import Graph.Types (ClusterLabel, DepGraph, EdgeLabel, ModuleDependencies (..),
+                    NodeLabel, isAppModule, moduleName, packageName)
 
 generateGraphFile :: MonadIO io => GeneratorParams -> ModuleDependencies -> io FilePath
 generateGraphFile genParams ModuleDependencies{depGraph} =
      liftIO $ runGraphviz dotGraph Svg "graph.svg"
    where
      gvParams = graphVizParams genParams
-     dotGraph = applyTred $ graphToDot gvParams depGraph
+     dotGraph = applyTred $ graphToDot gvParams $ restrictToUndesirableShareDeps depGraph
      applyTred = if enableTransitiveReduction genParams then transitiveReduction else id
+
+{- TODO remove - investigating all the dependencies of the form
+ [module from _share] -> [module NOT from _share]
+-}
+restrictToUndesirableShareDeps :: DepGraph -> DepGraph
+restrictToUndesirableShareDeps = filterNodes . filterEdges
+  where
+    filterNodes g = G.nfilter (\n -> G.deg g n > 0) g
+
+    filterEdges g = G.efilter (\(fromNode, toNode, ()) ->
+        let Just fromLab = G.lab g fromNode
+            Just toLab = G.lab g toNode
+        in    packageName fromLab == Just "_share"
+           && packageName toLab /= Just "_share"
+           && isJust (packageName toLab)) g
 
 getNeighborhood :: Node -> ModuleDependencies -> Maybe ModuleDependencies
 getNeighborhood nodeId md@ModuleDependencies{depGraph}
