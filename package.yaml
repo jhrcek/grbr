@@ -40,6 +40,8 @@ executables:
     - grbr
     - scotty
     - open-browser
+    - file-embed
+    - bytestring
 
 tests:
   grbr-test:

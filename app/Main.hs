@@ -1,15 +1,18 @@
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module Main where
 
 import Data.Text.Lazy (pack)
 import Elm.Analyse (getNodeAndEdgeCounts, loadModuleDependencies)
-import Graph.Builder (GeneratorParams (..), generateGraphFile,  getNeighborhood)
+import Graph.Builder (GeneratorParams (..), generateGraphFile, getNeighborhood)
 import Options (Options (..))
 import qualified Options
 import Web.Browser (openBrowser)
-import Web.Scotty (ActionM, file, get, param, rescue, scotty, text)
+import Web.Scotty (ActionM, file, get, param, rescue, scotty, text, raw)
+import Data.ByteString.Lazy (fromStrict)
+import Data.FileEmbed (embedFile)
 
 main :: IO ()
 main = do
@@ -20,6 +23,10 @@ main = do
          <> " nodes and " <> show edgeCount <> " edges"
   _ <- openBrowser "http://localhost:3000"
   scotty 3000 $ do
+      get "/index.html" $
+        raw $ fromStrict $(embedFile "client/dist/index.html")
+      get "/elm.js" $
+        raw $ fromStrict $(embedFile "client/dist/js/elm.js")
       get "/" $ do
           params <- getGeneratorParams
           generateGraphFile params modDeps >>= file
