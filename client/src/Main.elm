@@ -4,61 +4,100 @@ import Browser
 import Html exposing (Html, text)
 import Html.Attributes exposing (attribute, checked, href, style, type_)
 import Html.Events exposing (on, onClick)
-import Json.Decode as Decode
+import Http
+import Json.Decode as Decode exposing (Decoder)
 import Route exposing (ImageUrl, Route(..))
 import Url.Builder exposing (string)
 
 
 main : Program () Model Msg
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
+        , subscriptions = always Sub.none
         , view = view
         , update = update
         }
 
 
 type alias Model =
-    ImageUrl
-
-
-init : Model
-init =
-    { enableTransitiveReduction = True
-    , enableClustering = True
-    , route = WholeGraph
+    { imageUrl : ImageUrl
+    , nodeData : List NodeInfo
+    , labelSearch : String
     }
 
 
+init : () -> ( Model, Cmd Msg )
+init () =
+    ( { imageUrl =
+            { enableTransitiveReduction = True
+            , enableClustering = True
+            , route = WholeGraph
+            }
+      , nodeData = []
+      , labelSearch = ""
+      }
+    , Http.get
+        { url = "/nodes"
+        , expect = Http.expectJson processNodesResponse (Decode.list nodeInfoDecoder)
+        }
+    )
+
+
+processNodesResponse : Result Http.Error (List NodeInfo) -> Msg
+processNodesResponse =
+    NodeInfosLoaded << Result.withDefault []
+
+
 type Msg
+    = UpdateImage ImageMsg
+    | NodeInfosLoaded (List NodeInfo)
+
+
+type ImageMsg
     = ToggleTransitiveReduction
     | ToggleClustering
     | ChangeImageUrl String
     | SetRoute Route
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "" msg of
+    ( updatePure msg model, Cmd.none )
+
+
+updatePure : Msg -> Model -> Model
+updatePure msg model =
+    case msg of
+        UpdateImage imageMsg ->
+            { model | imageUrl = updateImageConfig imageMsg model.imageUrl }
+
+        NodeInfosLoaded nodeInfos ->
+            { model | nodeData = nodeInfos }
+
+
+updateImageConfig : ImageMsg -> ImageUrl -> ImageUrl
+updateImageConfig msg imageUrl =
+    case msg of
         ToggleTransitiveReduction ->
-            { model | enableTransitiveReduction = not model.enableTransitiveReduction }
+            { imageUrl | enableTransitiveReduction = not imageUrl.enableTransitiveReduction }
 
         ToggleClustering ->
-            { model | enableClustering = not model.enableClustering }
+            { imageUrl | enableClustering = not imageUrl.enableClustering }
 
         ChangeImageUrl url ->
-            { model | route = Route.parseUrl url }
+            { imageUrl | route = Route.parseUrl url }
 
         SetRoute route ->
-            { model | route = route }
+            { imageUrl | route = route }
 
 
 view : Model -> Html Msg
 view model =
     Html.div []
-        [ checkbox ToggleClustering model.enableClustering "clustering"
-        , checkbox ToggleTransitiveReduction model.enableTransitiveReduction "transitive reduction"
-        , nav model.route
+        [ checkbox (UpdateImage <| ToggleClustering) model.imageUrl.enableClustering "clustering"
+        , checkbox (UpdateImage <| ToggleTransitiveReduction) model.imageUrl.enableTransitiveReduction "transitive reduction"
+        , nav model
         , Html.div
             [ style "position" "absolute"
             , style "top" "100px"
@@ -68,26 +107,36 @@ view model =
             ]
             [ Html.object
                 [ type_ "image/svg+xml"
-                , attribute "data" (Route.toUrlString model)
+                , attribute "data" (Route.toUrlString model.imageUrl)
                 , style "height" "100%"
                 , style "width" "100%"
-                , on "load" <| Decode.map ChangeImageUrl <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
+                , on "load" <| Decode.map (UpdateImage << ChangeImageUrl) <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
                 ]
                 []
             ]
         ]
 
 
-nav : Route -> Html Msg
-nav route =
+nav : Model -> Html Msg
+nav model =
     Html.div [] <|
-        case route of
+        case model.imageUrl.route of
             WholeGraph ->
                 [ Html.text "Showing entire dependency graph; Click a node to focus on its neighborhood" ]
 
             NodeContext nodeId ->
-                [ Html.div [] [ Html.text <| "Node with ID " ++ String.fromInt nodeId ]
-                , Html.a [ href "#", onClick <| SetRoute WholeGraph ] [ Html.text "back to whole graph" ]
+                let
+                    nodeInfo =
+                        List.filter (\n -> n.nodeId == nodeId) model.nodeData
+                            |> List.head
+                            |> Maybe.withDefault
+                                { nodeId = nodeId
+                                , nodeLabel = "Unknown node"
+                                , nodeGroup = Nothing
+                                }
+                in
+                [ Html.div [] [ Html.text <| "Showing Node with ID " ++ String.fromInt nodeInfo.nodeId ++ " (" ++ nodeInfo.nodeLabel ++ ")" ]
+                , Html.a [ href "#", onClick <| UpdateImage <| SetRoute WholeGraph ] [ Html.text "back to whole graph" ]
                 ]
 
 
@@ -102,3 +151,18 @@ checkbox msg checkedState label =
             []
         , text label
         ]
+
+
+nodeInfoDecoder : Decoder NodeInfo
+nodeInfoDecoder =
+    Decode.map3 NodeInfo
+        (Decode.field "id" Decode.int)
+        (Decode.field "label" Decode.string)
+        (Decode.field "group" (Decode.nullable Decode.string))
+
+
+type alias NodeInfo =
+    { nodeId : Int
+    , nodeLabel : String
+    , nodeGroup : Maybe String
+    }
