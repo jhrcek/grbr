@@ -78,6 +78,8 @@ getNodeAndEdgeCounts :: ModuleDependencies -> (Int, Int)
 getNodeAndEdgeCounts ModuleDependencies{depGraph} =
     (order depGraph, size depGraph)
 
+
+-- TODO load this dynamically instead of hardcoding it
 moduleToPackage :: Map Module Text
 moduleToPackage = Map.fromList $ fmap (first (Module . Text.splitOn "."))
     [ ("Analytics","_share")

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Graph.Types
   ( ModuleDependencies(..)
   , NodeLabel
@@ -10,8 +11,11 @@ module Graph.Types
   , mkNodeLabel
   ) where
 
+import Data.Aeson (ToJSON, Value (Array), object, toJSON, (.=))
+import Data.Graph.Inductive.Graph (labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Text (Text)
+import qualified Data.Vector as Vector
 
 newtype ModuleDependencies = ModuleDependencies
     { depGraph   :: DepGraph
@@ -32,3 +36,14 @@ mkNodeLabel = NodeLabel
 type EdgeLabel = ()
 
 type ClusterLabel = Text
+
+instance ToJSON ModuleDependencies where
+    toJSON (ModuleDependencies depGraph_) =
+      Array
+      . Vector.fromList
+      . fmap (\(nodeId, nodeLabel) -> object
+          [ "id" .= nodeId
+          , "label" .= moduleName nodeLabel
+          , "group" .= packageName nodeLabel
+          ] )
+      $ labNodes depGraph_

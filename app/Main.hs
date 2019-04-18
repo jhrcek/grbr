@@ -4,15 +4,15 @@
 {-# LANGUAGE TemplateHaskell     #-}
 module Main where
 
+import Data.ByteString.Lazy (fromStrict)
+import Data.FileEmbed (embedFile)
 import Data.Text.Lazy (pack)
 import Elm.Analyse (getNodeAndEdgeCounts, loadModuleDependencies)
 import Graph.Builder (GeneratorParams (..), generateGraphFile, getNeighborhood)
 import Options (Options (..))
 import qualified Options
 import Web.Browser (openBrowser)
-import Web.Scotty (ActionM, file, get, param, rescue, scotty, text, raw)
-import Data.ByteString.Lazy (fromStrict)
-import Data.FileEmbed (embedFile)
+import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
 
 main :: IO ()
 main = do
@@ -24,9 +24,11 @@ main = do
   _ <- openBrowser "http://localhost:3000/index.html"
   scotty 3000 $ do
       get "/index.html" $
-        raw $ fromStrict $(embedFile "client/dist/index.html")
+          raw $ fromStrict $(embedFile "client/dist/index.html")
       get "/elm.js" $
-        raw $ fromStrict $(embedFile "client/dist/js/elm.js")
+          raw $ fromStrict $(embedFile "client/dist/js/elm.js")
+      get "/nodes" $
+          json modDeps
       get "/" $ do
           params <- getGeneratorParams
           generateGraphFile params modDeps >>= file
