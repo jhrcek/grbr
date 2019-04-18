@@ -2,12 +2,13 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (Html, text)
-import Html.Attributes exposing (checked, src, style, type_)
+import Html.Attributes exposing (attribute, checked, style, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Decode
 import Url.Builder exposing (string)
 
 
+initialUrl : String
 initialUrl =
     "http://localhost:3000"
 
@@ -90,8 +91,9 @@ view model =
                 []
             , text "transitive reduction"
             ]
-        , Html.iframe
-            [ src <| buildUrl model
+        , Html.object
+            [ type_ "image/svg+xml"
+            , attribute "data" (buildUrl model)
             , style "height" "100%"
             , style "width" "100%"
             , style "top" "50px"
