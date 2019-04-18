@@ -2,15 +2,11 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (Html, text)
-import Html.Attributes exposing (attribute, checked, style, type_)
+import Html.Attributes exposing (attribute, checked, href, style, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Decode
+import Route exposing (ImageUrl, Route(..))
 import Url.Builder exposing (string)
-
-
-initialUrl : String
-initialUrl =
-    "http://localhost:3000"
 
 
 main : Program () Model Msg
@@ -23,101 +19,86 @@ main =
 
 
 type alias Model =
-    { enableTransitiveReduction : Bool
-    , enableClustering : Bool
-    , iframeUrl : String
-    }
+    ImageUrl
 
 
 init : Model
 init =
     { enableTransitiveReduction = True
     , enableClustering = True
-    , iframeUrl = initialUrl
+    , route = WholeGraph
     }
 
 
 type Msg
     = ToggleTransitiveReduction
     | ToggleClustering
-    | IframeUrlChanged String
+    | ChangeImageUrl String
+    | SetRoute Route
 
 
 update : Msg -> Model -> Model
 update msg model =
-    case msg of
+    case Debug.log "" msg of
         ToggleTransitiveReduction ->
             { model | enableTransitiveReduction = not model.enableTransitiveReduction }
 
         ToggleClustering ->
             { model | enableClustering = not model.enableClustering }
 
-        IframeUrlChanged url ->
-            let
-                newUrl =
-                    String.split "?" url
-                        |> List.head
-                        |> Maybe.map
-                            (\s ->
-                                if String.endsWith "/" s then
-                                    String.dropRight 1 s
+        ChangeImageUrl url ->
+            { model | route = Route.parseUrl url }
 
-                                else
-                                    s
-                            )
-                        |> Maybe.withDefault initialUrl
-            in
-            { model | iframeUrl = newUrl }
+        SetRoute route ->
+            { model | route = route }
 
 
 view : Model -> Html Msg
 view model =
     Html.div []
-        [ Html.label []
-            [ Html.input
-                [ type_ "checkbox"
-                , onClick ToggleClustering
-                , checked model.enableClustering
+        [ checkbox ToggleClustering model.enableClustering "clustering"
+        , checkbox ToggleTransitiveReduction model.enableTransitiveReduction "transitive reduction"
+        , nav model.route
+        , Html.div
+            [ style "position" "absolute"
+            , style "top" "100px"
+            , style "left" "0"
+            , style "bottom" "0"
+            , style "right" "0"
+            ]
+            [ Html.object
+                [ type_ "image/svg+xml"
+                , attribute "data" (Route.toUrlString model)
+                , style "height" "100%"
+                , style "width" "100%"
+                , on "load" <| Decode.map ChangeImageUrl <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
                 ]
                 []
-            , text "clustering"
             ]
-        , Html.label []
-            [ Html.input
-                [ type_ "checkbox"
-                , onClick ToggleTransitiveReduction
-                , checked model.enableTransitiveReduction
+        ]
+
+
+nav : Route -> Html Msg
+nav route =
+    Html.div [] <|
+        case route of
+            WholeGraph ->
+                [ Html.text "Showing entire dependency graph; Click a node to focus on its neighborhood" ]
+
+            NodeContext nodeId ->
+                [ Html.div [] [ Html.text <| "Node with ID " ++ String.fromInt nodeId ]
+                , Html.a [ href "#", onClick <| SetRoute WholeGraph ] [ Html.text "back to whole graph" ]
                 ]
-                []
-            , text "transitive reduction"
-            ]
-        , Html.object
-            [ type_ "image/svg+xml"
-            , attribute "data" (buildUrl model)
-            , style "height" "100%"
-            , style "width" "100%"
-            , style "top" "50px"
-            , style "left" "0px"
-            , style "position" "absolute"
-            , on "load" <| Decode.map IframeUrlChanged <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
+
+
+checkbox : Msg -> Bool -> String -> Html Msg
+checkbox msg checkedState label =
+    Html.label []
+        [ Html.input
+            [ type_ "checkbox"
+            , onClick msg
+            , checked checkedState
             ]
             []
+        , text label
         ]
-
-
-buildUrl : Model -> String
-buildUrl model =
-    Url.Builder.crossOrigin model.iframeUrl
-        []
-        [ string "cluster" (showBool model.enableClustering)
-        , string "tred" (showBool model.enableTransitiveReduction)
-        ]
-
-
-showBool : Bool -> String
-showBool b =
-    if b then
-        "true"
-
-    else
-        "false"

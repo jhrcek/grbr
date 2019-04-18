@@ -21,7 +21,7 @@ main = do
   let (nodeCount, edgeCount) = getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount
          <> " nodes and " <> show edgeCount <> " edges"
-  _ <- openBrowser "http://localhost:3000"
+  _ <- openBrowser "http://localhost:3000/index.html"
   scotty 3000 $ do
       get "/index.html" $
         raw $ fromStrict $(embedFile "client/dist/index.html")

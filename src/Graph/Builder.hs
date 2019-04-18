@@ -33,7 +33,7 @@ generateGraphFile genParams ModuleDependencies{depGraph} =
      liftIO $ runGraphviz dotGraph Svg "graph.svg"
    where
      gvParams = graphVizParams genParams
-     dotGraph = applyTred $ graphToDot gvParams $ restrictToUndesirableShareDeps depGraph
+     dotGraph = applyTred $ graphToDot gvParams $ {-restrictToUndesirableShareDeps-} depGraph
      applyTred = if enableTransitiveReduction genParams then transitiveReduction else id
 
 {- TODO remove - investigating all the dependencies of the form
