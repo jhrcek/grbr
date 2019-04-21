@@ -7,18 +7,17 @@ module Main where
 import Data.ByteString.Lazy (fromStrict)
 import Data.FileEmbed (embedFile)
 import Data.Text.Lazy (pack)
-import Elm.Analyse (getNodeAndEdgeCounts, loadModuleDependencies)
-import Graph.Builder (GeneratorParams (..), generateGraphFile, getNeighborhood)
+import Graph.DotBuilder (GeneratorParams (..), generateGraphFile,
+                         getNeighborhood)
 import Web.Browser (openBrowser)
 import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
 
-import qualified Elm.Graph.Loader as Loader
+import qualified Elm.DepGraph as DepGraph
 
 main :: IO ()
 main = do
-  report <- Loader.getElmAnalyseReport
-  modDeps <- loadModuleDependencies report
-  let (nodeCount, edgeCount) = getNodeAndEdgeCounts modDeps
+  modDeps <- DepGraph.loadModuleDependencies
+  let (nodeCount, edgeCount) = DepGraph.getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount
          <> " nodes and " <> show edgeCount <> " edges"
   _ <- openBrowser "http://localhost:3000/index.html"

@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Graph.Builder
+module Graph.DotBuilder
     ( GeneratorParams (..)
     , generateGraphFile
     , getNeighborhood

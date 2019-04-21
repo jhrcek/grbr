@@ -25,6 +25,7 @@ library:
     - aeson
     - containers
     - fgl
+    - foldl
     - graphviz
     - time
     - turtle
