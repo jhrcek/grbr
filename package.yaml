@@ -14,9 +14,7 @@ description:         Please see the README on GitHub at <https://github.com/jhrc
 
 dependencies:
 - base >= 4.7 && < 5
-- fgl
 - text
-- aeson
 
 ghc-options:
 - -Wall
@@ -24,11 +22,13 @@ ghc-options:
 library:
   source-dirs: src
   dependencies:
+    - aeson
     - containers
+    - fgl
     - graphviz
-    - optparse-applicative
+    - time
+    - turtle
     - vector
-
 executables:
   grbr:
     main:                Main.hs

@@ -7,7 +7,7 @@ module Elm.Analyse
     , getNodeAndEdgeCounts
     ) where
 
-import Data.Aeson (FromJSON, decodeFileStrict')
+import Data.Aeson (FromJSON, eitherDecodeFileStrict')
 import Data.Graph.Inductive.Graph (mkGraph, order, size)
 import Data.IntSet (IntSet)
 import Data.Map.Strict (Map)
@@ -25,11 +25,11 @@ import qualified Data.Text as Text
 -- input is file X obtained by running "elm-analyse --format json > X"
 loadModuleDependencies :: FilePath -> IO ModuleDependencies
 loadModuleDependencies resultsFile = do
-    maybeAnalysisResult <- decodeFileStrict' resultsFile
+    maybeAnalysisResult <- eitherDecodeFileStrict' resultsFile
     case maybeAnalysisResult of
-        Nothing -> die $ "Failed to load analysis result from file : " <> resultsFile <>
-                        "\nIs this valid json file produced by 'elm-analyse --format json'?"
-        Just analysisResult -> return $ toGraph analysisResult
+        Left err -> die $ "Failed to load analysis result from file : " <> resultsFile <>
+                         "\nThe error was: " <> err
+        Right analysisResult -> return $ toGraph analysisResult
 
 newtype AnalysisResult = AnalysisResult
     { modules :: Modules

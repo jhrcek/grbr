@@ -9,15 +9,15 @@ import Data.FileEmbed (embedFile)
 import Data.Text.Lazy (pack)
 import Elm.Analyse (getNodeAndEdgeCounts, loadModuleDependencies)
 import Graph.Builder (GeneratorParams (..), generateGraphFile, getNeighborhood)
-import Options (Options (..))
-import qualified Options
 import Web.Browser (openBrowser)
 import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
 
+import qualified Elm.Graph.Loader as Loader
+
 main :: IO ()
 main = do
-  Options{inputFile} <- Options.parse
-  modDeps <- loadModuleDependencies inputFile
+  report <- Loader.getElmAnalyseReport
+  modDeps <- loadModuleDependencies report
   let (nodeCount, edgeCount) = getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount
          <> " nodes and " <> show edgeCount <> " edges"

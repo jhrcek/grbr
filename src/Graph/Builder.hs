@@ -22,8 +22,7 @@ import Data.GraphViz.Attributes.Complete (Attribute (Label, RankDir, URL),
 import Data.GraphViz.Commands (GraphvizOutput (Svg), runGraphviz)
 import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs),
                                         GraphID (Str))
-import Data.Maybe (isJust)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Text.Lazy (fromStrict, pack)
 import Graph.Types (ClusterLabel, DepGraph, EdgeLabel, ModuleDependencies (..),
                     NodeLabel, isAppModule, moduleName, packageName)
@@ -97,6 +96,7 @@ toColorAttr :: NodeLabel -> Attribute
 toColorAttr nodeLabel = fillColor $ fromMaybe White $ do
     pkg <- packageName nodeLabel
     lookup pkg
+       -- TODO use something like http://hackage.haskell.org/package/palette-0.3.0.2 to get high contrast pleasant to look at colors
         [ ("_factories", LightBlue)
         , ("_share", LightCoral)
         , ("app-monolithic", LightCyan)
