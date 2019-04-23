@@ -16,6 +16,7 @@ import Data.Graph.Inductive.Graph (labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Text (Text)
 import qualified Data.Vector as Vector
+import Elm.ClassifyPackages (Package (..))
 
 newtype ModuleDependencies = ModuleDependencies
     { depGraph   :: DepGraph
@@ -25,17 +26,17 @@ type DepGraph = Gr NodeLabel EdgeLabel
 
 data NodeLabel = NodeLabel
     { moduleName  :: Text --e.g. "Html.Attributes"
-    , packageName :: Maybe Text
+    , packageName :: Maybe Package
     -- True for Modules belonging to the analyzed app, False for modules from dependencies
     , isAppModule :: Bool
     }
 
-mkNodeLabel :: Text ->  Maybe Text -> Bool -> NodeLabel
+mkNodeLabel :: Text ->  Maybe Package -> Bool -> NodeLabel
 mkNodeLabel = NodeLabel
 
 type EdgeLabel = ()
 
-type ClusterLabel = Text
+type ClusterLabel = Package
 
 instance ToJSON ModuleDependencies where
     toJSON (ModuleDependencies depGraph_) =

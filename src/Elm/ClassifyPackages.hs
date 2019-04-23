@@ -2,10 +2,12 @@
 {-# LANGUAGE DerivingVia #-}
 
 module Elm.ClassifyPackages
-    ( classifyPackages
-    , Package(..)
-    )where
+    ( Package(..)
+    , classifyPackages
+    , knownPackages
+    ) where
 
+import Data.Aeson (ToJSON)
 import Data.Char (isUpper)
 import Data.Coerce (coerce)
 import Prelude hiding (FilePath)
@@ -23,8 +25,7 @@ classifyPackages = reduce Fold.map $ do
 
 -- | Represents elm package name
 newtype Package = Package Text
-    deriving (Eq)
-    deriving Show via Text
+    deriving (Eq, Ord, Show, ToJSON) via Text
 
 {- > extractPackaeAndModule "client/query-builder/QueryBuilder/Label.elm"
    (ElmModule "QueryBuilder.Label", Package "query-builder")

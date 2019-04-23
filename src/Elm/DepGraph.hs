@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Elm.DepGraph
     ( loadModuleDependencies
     , getNodeAndEdgeCounts
@@ -37,19 +37,21 @@ toGraph moduleToPackage AnalysisResult{modules} =
     appModuleIds :: IntSet
     appModuleIds = Set.fromList $ mapMaybe (\module_ -> Map.lookup module_ nameToIdMap) (projectModules modules)
 
-    nodes = (\(module_, moduleId) -> let mPackage = (\(Package pkg) -> pkg) <$> Map.lookup module_ moduleToPackage
-                                     in
-                                     ( moduleId
-                                     , mkNodeLabel
-                                         (getModuleName module_)
-                                         mPackage
-                                         (moduleId `Set.member` appModuleIds)
-                                     )) <$> Map.toList nameToIdMap
+    nodes = (\(module_, moduleId) ->
+        let mPackage = Map.lookup module_ moduleToPackage
+        in
+        ( moduleId
+        , mkNodeLabel
+            (getModuleName module_)
+            mPackage
+            (moduleId `Set.member` appModuleIds)
+        )) <$> Map.toList nameToIdMap
 
-    edges = (\(module1, module2) -> ( nameToIdMap Map.! module1
-                                    , nameToIdMap Map.! module2
-                                    , ()
-                                    )) <$> dependencies modules
+    edges = (\(module1, module2) ->
+        ( nameToIdMap Map.! module1
+        , nameToIdMap Map.! module2
+        , ()
+        )) <$> dependencies modules
 
 insertUniqueId :: Ord k => k -> v -> Map k v -> Map k v
 insertUniqueId = Map.insertWith (\_newVal oldVal -> oldVal)
