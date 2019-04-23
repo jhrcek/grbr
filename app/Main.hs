@@ -1,30 +1,62 @@
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module Main where
 
+import Data.ByteString.Lazy (fromStrict)
+import Data.FileEmbed (embedFile)
 import Data.Text.Lazy (pack)
-import Elm.Analyse (getNodeAndEdgeCounts, loadModuleDependencies)
-import Graph.Builder (generateNodeContext, generateWholeGraph, getNeighborhood)
-import Options (Options (..))
-import qualified Options
+import Graph.DotBuilder (GeneratorParams (..), generateGraphFile,
+                         getNeighborhood)
 import Web.Browser (openBrowser)
-import Web.Scotty (file, get, param, scotty, text)
+import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
+
+import qualified Elm.DepGraph as DepGraph
 
 main :: IO ()
 main = do
-  Options{inputFile} <- Options.parse
-  modDeps <- loadModuleDependencies inputFile
-  let (nodeCount, edgeCount) = getNodeAndEdgeCounts modDeps
+  modDeps <- DepGraph.loadModuleDependencies
+  let (nodeCount, edgeCount) = DepGraph.getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount
          <> " nodes and " <> show edgeCount <> " edges"
-  _ <- openBrowser "http://localhost:3000"
+  _ <- openBrowser "http://localhost:3000/index.html"
   scotty 3000 $ do
-      get "/" $
-          generateWholeGraph modDeps >>= file
+      get "/index.html" $
+          raw $ fromStrict $(embedFile "client/dist/index.html")
+      get "/elm.js" $
+          raw $ fromStrict $(embedFile "client/dist/js/elm.js")
+      get "/nodes" $
+          json modDeps
+      get "/" $ do
+          params <- getGeneratorParams
+          generateGraphFile params modDeps >>= file
       get "/node/:nodeId" $ do
-          nodeId <- param "nodeId"
-          case getNeighborhood nodeId modDeps of
-              Nothing -> text $ "This graph doesn't have node with ID " <> pack (show nodeId)
-                             <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
-              Just neighborhood -> generateNodeContext nodeId neighborhood >>= file
+          params <- getGeneratorParams
+          case centralNode params of
+              Nothing -> text "You must provide node ID in the URL!"
+              Just nodeId ->
+                  case getNeighborhood nodeId modDeps of
+                      Nothing -> text $ "This graph doesn't have node with ID " <> pack (show nodeId)
+                                     <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
+                      Just neighborhood -> generateGraphFile params neighborhood >>= file
+
+getGeneratorParams :: ActionM GeneratorParams
+getGeneratorParams = do
+    mNodeId <- getNodeIdParam
+    isCluster <- getClusterParam
+    isTred <- getTredParam
+    return $ GeneratorParams
+        { centralNode = mNodeId
+        , enableTransitiveReduction = isTred
+        , clusteringEnabled = isCluster
+        }
+
+getClusterParam :: ActionM Bool
+getClusterParam = param "cluster" `rescue` (\_err -> pure False)
+
+getTredParam :: ActionM Bool
+getTredParam = param "tred" `rescue` (\_err -> pure True)
+
+getNodeIdParam :: ActionM (Maybe Int)
+getNodeIdParam = (Just <$> param "nodeId") `rescue` (\_err -> pure Nothing)

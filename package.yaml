@@ -14,7 +14,6 @@ description:         Please see the README on GitHub at <https://github.com/jhrc
 
 dependencies:
 - base >= 4.7 && < 5
-- fgl
 - text
 
 ghc-options:
@@ -25,9 +24,12 @@ library:
   dependencies:
     - aeson
     - containers
+    - fgl
+    - foldl
     - graphviz
-    - optparse-applicative
-
+    - time
+    - turtle
+    - vector
 executables:
   grbr:
     main:                Main.hs
@@ -40,6 +42,8 @@ executables:
     - grbr
     - scotty
     - open-browser
+    - file-embed
+    - bytestring
 
 tests:
   grbr-test:
