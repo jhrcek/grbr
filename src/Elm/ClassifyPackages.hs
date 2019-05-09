@@ -27,8 +27,8 @@ classifyPackages = reduce Fold.map $ do
 newtype Package = Package Text
     deriving (Eq, Ord, Show, ToJSON) via Text
 
-{- > extractPackaeAndModule "client/query-builder/QueryBuilder/Label.elm"
-   (ElmModule "QueryBuilder.Label", Package "query-builder")
+{- > extractPackaeAndModule "client/crosstab-builder/QueryBuilder/Label.elm"
+   (ElmModule "QueryBuilder.Label", Package "crosstab-builder")
 -}
 extractPackageAndModule :: FilePath -> Shell (Module, Package)
 extractPackageAndModule elmFile = do
@@ -49,7 +49,7 @@ extractPackageAndModule elmFile = do
                 ("port":"module":moduleName:_) -> return $ Module $ Text.splitOn "." moduleName
                 _ -> die $ format ("Failed to determine module name in "%fp) elmFile
         when (moduleFromFileName /= moduleFromFile) $
-            printf ("File name and module name don't match for "%fp%
+            printf ("WARNING: File name and module name don't match for "%fp%
                     "\n    module from file name = "%s%
                     "\n    module from file      = "%s%"\n") elmFile
                     (getModuleName moduleFromFileName)
@@ -86,7 +86,7 @@ knownPackages = coerce
     , "fullscreen-search"
     , "gwiq"
     , "products"
-    , "query-builder"
+    , "crosstab-builder"
     , "settings"
     , "tv-elm"
     , "tv-study"
