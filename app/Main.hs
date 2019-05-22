@@ -7,6 +7,7 @@ module Main where
 import Data.ByteString.Lazy (fromStrict)
 import Data.FileEmbed (embedFile)
 import Data.Text.Lazy (pack)
+import Data.GraphViz.Commands (quitWithoutGraphviz)
 import Graph.DotBuilder (GeneratorParams (..), generateGraphFile,
                          getNeighborhood)
 import Web.Browser (openBrowser)
@@ -16,6 +17,8 @@ import qualified Elm.DepGraph as DepGraph
 
 main :: IO ()
 main = do
+  quitWithoutGraphviz "This tool requires graphviz for diagram generation.\n\
+                      \See https://graphviz.gitlab.io/download/ for installation instructions."
   modDeps <- DepGraph.loadModuleDependencies
   let (nodeCount, edgeCount) = DepGraph.getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount

@@ -3,6 +3,14 @@
 **gr**-aph **br**-owser
 A simple web app for traversing large directed graphs.
 
+## Installation
+
+### Prerequisites
+You need `stack`, `elm` and `uglifyjs` binaries on PATH to be able to build this from source
+
+Run `make` in the root of the project. This should install `grbr` binary on your path
+
+
 ## TODO
 
 - [x] given FGL graph, render it using graphviz as svg image

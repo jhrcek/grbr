@@ -39,12 +39,13 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - grbr
-    - scotty
-    - open-browser
-    - file-embed
     - bytestring
-
+    - file-embed
+    - graphviz
+    - grbr
+    - open-browser
+    - scotty
+    
 tests:
   grbr-test:
     main:                Spec.hs
