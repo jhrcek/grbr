@@ -12,6 +12,7 @@ import Control.Monad ((>=>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Bool (bool)
 import Data.Function ((&))
+import Data.Graph.Inductive.Basic (efilter)
 import Data.Graph.Inductive.Graph (Edge, LEdge, LNode, Node)
 import qualified Data.Graph.Inductive.Graph as Graph
 import Data.Graph.Inductive.PatriciaTree (Gr)
@@ -44,8 +45,20 @@ generateModuleDepGraph genParams ModuleDependencies{depGraph} =
     liftIO $ runGraphviz dotGraph Svg "graph.svg"
   where
     gvParams = graphVizParams genParams
+
     dotGraph = transitiveReductionWhen (enableTransitiveReduction genParams)
-               $ graphToDot gvParams depGraph
+               . graphToDot gvParams
+               . (\g -> Graph.nfilter (removeZeroDegNodes g) g)
+               $ efilter removeEdges
+               depGraph
+
+    removeEdges (fromId, toId, _) =
+        (Graph.lab depGraph fromId >>= packageName) == Just (Package "_share")
+        && (Graph.lab depGraph toId >>= packageName) /= Just (Package "_share")
+        && (Graph.lab depGraph toId >>= packageName) /= Nothing
+
+    removeZeroDegNodes g nodeId = Graph.deg g nodeId > 0
+
 
 generatePackageDepGraph :: MonadIO io => GeneratorParams -> ModuleDependencies -> io FilePath
 generatePackageDepGraph genParams ModuleDependencies{depGraph} =
