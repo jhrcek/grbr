@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Elm.ClassifyPackages
     ( Package(..)
@@ -16,12 +17,22 @@ import Data.Map.Strict (Map)
 import Elm.Analyse (Module(..), getModuleName)
 import qualified Control.Foldl as Fold
 import qualified Data.Text as Text
+import Elm.Json (sourceDirectories, ElmJson, Error(..))
+import qualified Elm.Json
 
 classifyPackages :: MonadIO io => io (Map Module Package)
 classifyPackages = reduce Fold.map $ do
-    dir <- dirsWithElmFiles
+    dirs <- liftIO $ sourceDirectories <$> loadOrDie
+    dir <- select dirs
     elmFile <- find (ends ".elm") dir
     extractPackageAndModule elmFile
+
+loadOrDie :: IO ElmJson
+loadOrDie =
+    Elm.Json.load "elm.json" >>= \case
+        Left (ElmJsonDoesNotExist _) -> die "I didn't find elm.json in the current directory"
+        Left (ElmJsonDecodeError decodeError) -> die $ "Failed to decode elm.json: " <> Text.pack decodeError
+        Right xs -> pure xs
 
 -- | Represents elm package name
 newtype Package = Package Text
@@ -70,9 +81,6 @@ extractPackageAndModule elmFile = do
              "\n  matched packages = "%w) elmFile knownPackages more
       where
         hits = filter (\(Package c) -> c `elem` pathPieces_) knownPackages
-
-dirsWithElmFiles :: Shell FilePath
-dirsWithElmFiles = select ["components", "client"]
 
 knownPackages :: [Package]
 knownPackages = coerce

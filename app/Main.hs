@@ -6,8 +6,8 @@ module Main where
 
 import Data.ByteString.Lazy (fromStrict)
 import Data.FileEmbed (embedFile)
-import Data.Text.Lazy (pack)
 import Data.GraphViz.Commands (quitWithoutGraphviz)
+import Data.Text.Lazy (pack)
 import Graph.DotBuilder (GeneratorParams (..), generateGraphFile,
                          getNeighborhood)
 import Web.Browser (openBrowser)
