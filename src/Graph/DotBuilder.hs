@@ -114,19 +114,24 @@ getNeighborhood nodeId md@ModuleDependencies{depGraph}
 type ModuleGraphParams = GraphvizParams Node NodeLabel EdgeLabel ClusterLabel NodeLabel
 
 graphVizParams :: GeneratorParams -> ModuleGraphParams
-graphVizParams GeneratorParams{centralNode, clusteringEnabled} = defaultParams
-    { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
-    , fmtNode = \(nodeId, nodeLabel) ->
-        [ URL $ "/node/" <> pack (show nodeId)
-        , toLabelAttr clusteringEnabled nodeLabel
-        , toColorAttr nodeLabel
-        , toShapeAttr centralNode nodeId nodeLabel
-        , style filled
-        ]
-    , clusterBy = if clusteringEnabled then clusterByPackage else clusterBy defaultParams
-    , clusterID = if clusteringEnabled then \(Package pkgName) -> Str (fromStrict pkgName) else clusterID defaultParams
-    , fmtCluster = if clusteringEnabled then \(Package pkgName) -> [ GraphAttrs [ textLabel pkgName ]] else fmtCluster defaultParams
-    }
+graphVizParams GeneratorParams{centralNode, clusteringEnabled}
+    | clusteringEnabled = customizedParams
+        { clusterBy = clusterByPackage
+        , clusterID = \(Package pkgName) -> Str (fromStrict pkgName)
+        , fmtCluster = \(Package pkgName) -> [ GraphAttrs [ textLabel pkgName ]]
+        }
+    | otherwise = customizedParams
+  where
+    customizedParams = defaultParams
+        { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
+        , fmtNode = \(nodeId, nodeLabel) ->
+            [ URL $ "/node/" <> pack (show nodeId)
+            , toLabelAttr clusteringEnabled nodeLabel
+            , toColorAttr nodeLabel
+            , toShapeAttr centralNode nodeId nodeLabel
+            , style filled
+            ]
+        }
 
 clusterByPackage :: (Node, NodeLabel)  -> NodeCluster ClusterLabel (Node, NodeLabel)
 clusterByPackage pair@(_, nodeLabel) = case packageName nodeLabel of
