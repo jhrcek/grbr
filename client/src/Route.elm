@@ -11,7 +11,8 @@ import Url.Parser exposing ((</>), Parser, int, map, oneOf, parse, s, top)
 
 
 type Route
-    = WholeGraph
+    = ModuleDepGraph
+    | PackageDepGraph
     | NodeContext Int
 
 
@@ -26,32 +27,37 @@ parseUrl : String -> Route
 parseUrl urlStr =
     Url.fromString urlStr
         |> Maybe.andThen (parse routeParser)
-        |> Maybe.withDefault WholeGraph
+        |> Maybe.withDefault ModuleDepGraph
 
 
 routeParser : Parser (Route -> a) a
 routeParser =
     oneOf
-        [ map WholeGraph top
+        [ map ModuleDepGraph top
+        , map PackageDepGraph (s "packages")
         , map NodeContext (s "node" </> int)
         ]
 
 
 toUrlString : ImageUrl -> String
 toUrlString { route, enableTransitiveReduction, enableClustering } =
-    let
-        path =
-            case route of
-                WholeGraph ->
-                    []
-
-                NodeContext nodeId ->
-                    [ "node", String.fromInt nodeId ]
-    in
-    Url.Builder.absolute path
+    Url.Builder.absolute (routePieces route)
         [ string "cluster" (showBool enableClustering)
         , string "tred" (showBool enableTransitiveReduction)
         ]
+
+
+routePieces : Route -> List String
+routePieces route =
+    case route of
+        ModuleDepGraph ->
+            []
+
+        PackageDepGraph ->
+            [ "packages" ]
+
+        NodeContext nodeId ->
+            [ "node", String.fromInt nodeId ]
 
 
 showBool : Bool -> String

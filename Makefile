@@ -12,6 +12,10 @@ server:
 client:
 	cd client && elm make src/Main.elm --output=dist/js/elm.js --optimize && cd -
 
+.PHONY: client-dev
+client-dev:
+	cd client && elm-live --dir dist --open -- src/Main.elm --output dist/js/elm.js
+
 .PHONE: minify
 minify:
 	uglifyjs client/dist/js/elm.js --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output=client/dist/js/elm.js
@@ -20,4 +24,3 @@ minify:
 clean:
 	rm -rf client/elm-stuff
 	stack clean
-

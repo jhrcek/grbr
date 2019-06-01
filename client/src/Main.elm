@@ -32,7 +32,7 @@ init () =
     ( { imageUrl =
             { enableTransitiveReduction = True
             , enableClustering = True
-            , route = WholeGraph
+            , route = ModuleDepGraph
             }
       , nodeData = []
       , labelSearch = ""
@@ -95,9 +95,7 @@ updateImageConfig msg imageUrl =
 view : Model -> Html Msg
 view model =
     Html.div []
-        [ checkbox (UpdateImage <| ToggleClustering) model.imageUrl.enableClustering "clustering"
-        , checkbox (UpdateImage <| ToggleTransitiveReduction) model.imageUrl.enableTransitiveReduction "transitive reduction"
-        , nav model
+        [ navigation model
         , Html.div
             [ style "position" "absolute"
             , style "top" "100px"
@@ -117,12 +115,28 @@ view model =
         ]
 
 
-nav : Model -> Html Msg
-nav model =
+imageParameterControls : ImageUrl -> Html Msg
+imageParameterControls imageUrl =
+    Html.div []
+        [ checkbox (UpdateImage ToggleClustering) imageUrl.enableClustering "clustering"
+        , checkbox (UpdateImage ToggleTransitiveReduction) imageUrl.enableTransitiveReduction "transitive reduction"
+        ]
+
+
+navigation : Model -> Html Msg
+navigation model =
     Html.div [] <|
         case model.imageUrl.route of
-            WholeGraph ->
-                [ Html.text "Showing entire dependency graph; Click a node to focus on its neighborhood" ]
+            PackageDepGraph ->
+                [ Html.text "Showing package dependency graph. Back to "
+                , moduleGraphLink
+                ]
+
+            ModuleDepGraph ->
+                [ imageParameterControls model.imageUrl
+                , Html.text "Showing module dependency graph. Click a node to focus its neighborhood or go to "
+                , packageGraphLink
+                ]
 
             NodeContext nodeId ->
                 let
@@ -135,9 +149,22 @@ nav model =
                                 , nodeGroup = Nothing
                                 }
                 in
-                [ Html.div [] [ Html.text <| "Showing Node with ID " ++ String.fromInt nodeInfo.nodeId ++ " (" ++ nodeInfo.nodeLabel ++ ")" ]
-                , Html.a [ href "#", onClick <| UpdateImage <| SetRoute WholeGraph ] [ Html.text "back to whole graph" ]
+                [ imageParameterControls model.imageUrl
+                , Html.text <| "Showing Node with ID " ++ String.fromInt nodeInfo.nodeId ++ " (" ++ nodeInfo.nodeLabel ++ "). Back to "
+                , moduleGraphLink
+                , Html.text " or "
+                , packageGraphLink
                 ]
+
+
+moduleGraphLink : Html Msg
+moduleGraphLink =
+    Html.a [ href "#", onClick <| UpdateImage <| SetRoute ModuleDepGraph ] [ Html.text "module dependency graph" ]
+
+
+packageGraphLink : Html Msg
+packageGraphLink =
+    Html.a [ href "#", onClick <| UpdateImage <| SetRoute PackageDepGraph ] [ Html.text "package dependency graph" ]
 
 
 checkbox : Msg -> Bool -> String -> Html Msg
