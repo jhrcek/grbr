@@ -8,8 +8,8 @@ import Data.ByteString.Lazy (fromStrict)
 import Data.FileEmbed (embedFile)
 import Data.GraphViz.Commands (quitWithoutGraphviz)
 import Data.Text.Lazy (pack)
-import Graph.DotBuilder (GeneratorParams (..), generateGraphFile,
-                         getNeighborhood)
+import Graph.DotBuilder (GeneratorParams (..), generateModuleDepGraph,
+                         getNeighborhood, generatePackageDepGraph)
 import Web.Browser (openBrowser)
 import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
 
@@ -33,7 +33,9 @@ main = do
           json modDeps
       get "/" $ do
           params <- getGeneratorParams
-          generateGraphFile params modDeps >>= file
+          generateModuleDepGraph params modDeps >>= file
+      get "/packages" $
+          generatePackageDepGraph modDeps >>= file
       get "/node/:nodeId" $ do
           params <- getGeneratorParams
           case centralNode params of
@@ -42,7 +44,7 @@ main = do
                   case getNeighborhood nodeId modDeps of
                       Nothing -> text $ "This graph doesn't have node with ID " <> pack (show nodeId)
                                      <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
-                      Just neighborhood -> generateGraphFile params neighborhood >>= file
+                      Just neighborhood -> generateModuleDepGraph params neighborhood >>= file
 
 getGeneratorParams :: ActionM GeneratorParams
 getGeneratorParams = do

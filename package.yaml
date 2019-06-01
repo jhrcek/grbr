@@ -45,7 +45,7 @@ executables:
     - grbr
     - open-browser
     - scotty
-    
+
 tests:
   grbr-test:
     main:                Spec.hs

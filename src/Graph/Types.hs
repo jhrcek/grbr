@@ -19,7 +19,7 @@ import qualified Data.Vector as Vector
 import Elm.ClassifyPackages (Package (..))
 
 newtype ModuleDependencies = ModuleDependencies
-    { depGraph   :: DepGraph
+    { depGraph :: DepGraph
     }
 
 type DepGraph = Gr NodeLabel EdgeLabel
