@@ -1,29 +1,45 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Dom
+import Browser.Events
+import Color
+import Dict exposing (Dict)
+import Element exposing (Element)
+import Element.Background as Background
+import Element.Input as Input
 import Html exposing (Html, text)
-import Html.Attributes exposing (attribute, checked, href, style, type_)
-import Html.Events exposing (on, onClick)
+import Html.Attributes exposing (attribute, style, type_)
+import Html.Events exposing (on)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Route exposing (ImageUrl, Route(..))
-import Url.Builder exposing (string)
+import Task
 
 
 main : Program () Model Msg
 main =
     Browser.element
         { init = init
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         , view = view
         , update = update
         }
 
 
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Browser.Events.onResize SetWindowSize
+
+
 type alias Model =
     { imageUrl : ImageUrl
-    , nodeData : List NodeInfo
+    , nodeData : Dict Int NodeInfo
     , labelSearch : String
+    , windowSize :
+        { width : Int
+        , height : Int
+        }
     }
 
 
@@ -34,14 +50,37 @@ init () =
             , enableClustering = True
             , route = ModuleDepGraph
             }
-      , nodeData = []
+      , nodeData = Dict.empty
       , labelSearch = ""
+      , windowSize = { width = 640, height = 480 }
       }
-    , Http.get
+    , Cmd.batch
+        [ loadNodes
+        , setInitialWindowSize
+        ]
+    )
+
+
+setInitialWindowSize : Cmd Msg
+setInitialWindowSize =
+    Browser.Dom.getViewport
+        |> Task.attempt
+            (\result ->
+                case result of
+                    Ok { viewport } ->
+                        SetWindowSize (round viewport.width) (round viewport.height)
+
+                    Err _ ->
+                        NoOp
+            )
+
+
+loadNodes : Cmd Msg
+loadNodes =
+    Http.get
         { url = "/nodes"
         , expect = Http.expectJson processNodesResponse (Decode.list nodeInfoDecoder)
         }
-    )
 
 
 processNodesResponse : Result Http.Error (List NodeInfo) -> Msg
@@ -52,11 +91,13 @@ processNodesResponse =
 type Msg
     = UpdateImage ImageMsg
     | NodeInfosLoaded (List NodeInfo)
+    | SetWindowSize Int Int
+    | NoOp
 
 
 type ImageMsg
-    = ToggleTransitiveReduction
-    | ToggleClustering
+    = ToggleTransitiveReduction Bool
+    | ToggleClustering Bool
     | ChangeImageUrl String
     | SetRoute Route
 
@@ -73,17 +114,23 @@ updatePure msg model =
             { model | imageUrl = updateImageConfig imageMsg model.imageUrl }
 
         NodeInfosLoaded nodeInfos ->
-            { model | nodeData = nodeInfos }
+            { model | nodeData = Dict.fromList <| List.map (\i -> ( i.nodeId, i )) nodeInfos }
+
+        SetWindowSize w h ->
+            { model | windowSize = { width = w, height = h } }
+
+        NoOp ->
+            model
 
 
 updateImageConfig : ImageMsg -> ImageUrl -> ImageUrl
 updateImageConfig msg imageUrl =
     case msg of
-        ToggleTransitiveReduction ->
-            { imageUrl | enableTransitiveReduction = not imageUrl.enableTransitiveReduction }
+        ToggleTransitiveReduction bool ->
+            { imageUrl | enableTransitiveReduction = bool }
 
-        ToggleClustering ->
-            { imageUrl | enableClustering = not imageUrl.enableClustering }
+        ToggleClustering bool ->
+            { imageUrl | enableClustering = bool }
 
         ChangeImageUrl url ->
             { imageUrl | route = Route.parseUrl url }
@@ -94,90 +141,105 @@ updateImageConfig msg imageUrl =
 
 view : Model -> Html Msg
 view model =
-    Html.div []
-        [ navigation model
-        , Html.div
-            [ style "position" "absolute"
-            , style "top" "100px"
-            , style "left" "0"
-            , style "bottom" "0"
-            , style "right" "0"
+    Element.layout [] <|
+        Element.column []
+            [ navbar model
+            , Element.html <|
+                Html.object
+                    [ type_ "image/svg+xml"
+                    , attribute "data" (Route.toUrlString model.imageUrl)
+                    , style "height" (String.fromInt (model.windowSize.height - navbarHeight) ++ "px")
+                    , style "width" (String.fromInt model.windowSize.width ++ "px")
+                    , on "load" <| Decode.map (UpdateImage << ChangeImageUrl) <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
+                    ]
+                    []
             ]
-            [ Html.object
-                [ type_ "image/svg+xml"
-                , attribute "data" (Route.toUrlString model.imageUrl)
-                , style "height" "100%"
-                , style "width" "100%"
-                , on "load" <| Decode.map (UpdateImage << ChangeImageUrl) <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
-                ]
-                []
-            ]
-        ]
 
 
-imageParameterControls : ImageUrl -> Html Msg
+imageParameterControls : ImageUrl -> Element Msg
 imageParameterControls imageUrl =
-    Html.div []
-        [ checkbox (UpdateImage ToggleClustering) imageUrl.enableClustering "clustering"
-        , checkbox (UpdateImage ToggleTransitiveReduction) imageUrl.enableTransitiveReduction "transitive reduction"
+    Element.column [ Element.padding 10 ]
+        [ Input.checkbox []
+            { onChange = UpdateImage << ToggleClustering
+            , icon = Input.defaultCheckbox
+            , checked = imageUrl.enableClustering
+            , label = Input.labelRight [] (Element.text "clustering")
+            }
+        , Input.checkbox []
+            { onChange = UpdateImage << ToggleTransitiveReduction
+            , icon = Input.defaultCheckbox
+            , checked = imageUrl.enableTransitiveReduction
+            , label = Input.labelRight [] (Element.text "transitive reduction")
+            }
         ]
 
 
-navigation : Model -> Html Msg
-navigation model =
-    Html.div [] <|
-        case model.imageUrl.route of
-            PackageDepGraph ->
-                [ Html.text "Showing package dependency graph. Back to "
-                , moduleGraphLink
-                ]
-
-            ModuleDepGraph ->
-                [ imageParameterControls model.imageUrl
-                , Html.text "Showing module dependency graph. Click a node to focus its neighborhood or go to "
-                , packageGraphLink
-                ]
-
-            NodeContext nodeId ->
-                let
-                    nodeInfo =
-                        List.filter (\n -> n.nodeId == nodeId) model.nodeData
-                            |> List.head
-                            |> Maybe.withDefault
-                                { nodeId = nodeId
-                                , nodeLabel = "Unknown node"
-                                , nodeGroup = Nothing
-                                }
-                in
-                [ imageParameterControls model.imageUrl
-                , Html.text <| "Showing Node with ID " ++ String.fromInt nodeInfo.nodeId ++ " (" ++ nodeInfo.nodeLabel ++ "). Back to "
-                , moduleGraphLink
-                , Html.text " or "
-                , packageGraphLink
-                ]
-
-
-moduleGraphLink : Html Msg
-moduleGraphLink =
-    Html.a [ href "#", onClick <| UpdateImage <| SetRoute ModuleDepGraph ] [ Html.text "module dependency graph" ]
-
-
-packageGraphLink : Html Msg
-packageGraphLink =
-    Html.a [ href "#", onClick <| UpdateImage <| SetRoute PackageDepGraph ] [ Html.text "package dependency graph" ]
-
-
-checkbox : Msg -> Bool -> String -> Html Msg
-checkbox msg checkedState label =
-    Html.label []
-        [ Html.input
-            [ type_ "checkbox"
-            , onClick msg
-            , checked checkedState
-            ]
-            []
-        , text label
+navbar : Model -> Element Msg
+navbar model =
+    Element.row
+        [ Element.height (Element.px navbarHeight)
+        , Element.width (Element.px model.windowSize.width)
+        , Background.color Color.lightGray
         ]
+        [ moduleGraphLink model.imageUrl.route
+        , packageGraphLink model.imageUrl.route
+        , nodePicker model
+        , imageParameterControls model.imageUrl
+        ]
+
+
+navbarHeight : Int
+navbarHeight =
+    80
+
+
+moduleGraphLink : Route -> Element Msg
+moduleGraphLink currentRoute =
+    Input.button [ Element.height Element.fill, highlightNavWhen (currentRoute == ModuleDepGraph) ]
+        { onPress = Just <| UpdateImage <| SetRoute ModuleDepGraph
+        , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "module dependency graph"
+        }
+
+
+packageGraphLink : Route -> Element Msg
+packageGraphLink currentRoute =
+    Input.button [ Element.height Element.fill, highlightNavWhen (currentRoute == PackageDepGraph) ]
+        { onPress = Just <| UpdateImage <| SetRoute PackageDepGraph
+        , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "package dependency graph"
+        }
+
+
+nodePicker : Model -> Element Msg
+nodePicker model =
+    let
+        ( isHighlighted, text ) =
+            case model.imageUrl.route of
+                NodeContext nodeId ->
+                    let
+                        nodeInfo =
+                            Maybe.withDefault dummyNodeInfo <| Dict.get nodeId model.nodeData
+                    in
+                    ( True, "Focusing module: " ++ nodeInfo.nodeLabel )
+
+                ModuleDepGraph ->
+                    ( False, "Click a node to pick a module" )
+
+                PackageDepGraph ->
+                    ( False, "..." )
+    in
+    Element.el [ Element.height Element.fill, highlightNavWhen isHighlighted ] <|
+        Element.el [ Element.centerY, Element.padding 10 ] <|
+            Element.text text
+
+
+highlightNavWhen : Bool -> Element.Attribute Msg
+highlightNavWhen flag =
+    Background.color <|
+        if flag then
+            Color.lightBlue
+
+        else
+            Color.lightGray
 
 
 nodeInfoDecoder : Decoder NodeInfo
@@ -193,3 +255,8 @@ type alias NodeInfo =
     , nodeLabel : String
     , nodeGroup : Maybe String
     }
+
+
+dummyNodeInfo : NodeInfo
+dummyNodeInfo =
+    { nodeId = -1, nodeLabel = "Node not found", nodeGroup = Nothing }
