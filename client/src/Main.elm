@@ -7,6 +7,8 @@ import Color
 import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
+import Element.Border as Border
+import Element.Events as Events
 import Element.Input as Input
 import Html exposing (Html, text)
 import Html.Attributes exposing (attribute, style, type_)
@@ -34,12 +36,18 @@ subscriptions _ =
 
 type alias Model =
     { imageUrl : ImageUrl
-    , nodeData : Dict Int NodeInfo
-    , labelSearch : String
+    , nodeData : Dict NodeId NodeInfo
+    , menu : Menu
     , windowSize :
         { width : Int
         , height : Int
         }
+    }
+
+
+type alias Menu =
+    { isOpen : Bool
+    , searchTerm : String
     }
 
 
@@ -51,8 +59,14 @@ init () =
             , route = ModuleDepGraph
             }
       , nodeData = Dict.empty
-      , labelSearch = ""
-      , windowSize = { width = 640, height = 480 }
+      , menu =
+            { isOpen = False
+            , searchTerm = ""
+            }
+      , windowSize =
+            { width = 640
+            , height = 480
+            }
       }
     , Cmd.batch
         [ loadNodes
@@ -92,6 +106,8 @@ type Msg
     = UpdateImage ImageMsg
     | NodeInfosLoaded (List NodeInfo)
     | SetWindowSize Int Int
+    | SetSearchTerm String
+    | OpenMenu
     | NoOp
 
 
@@ -108,16 +124,25 @@ update msg model =
 
 
 updatePure : Msg -> Model -> Model
-updatePure msg model =
+updatePure msg ({ menu, imageUrl } as model) =
     case msg of
         UpdateImage imageMsg ->
-            { model | imageUrl = updateImageConfig imageMsg model.imageUrl }
+            { model
+                | imageUrl = updateImageConfig imageMsg imageUrl
+                , menu = { searchTerm = "", isOpen = False }
+            }
 
         NodeInfosLoaded nodeInfos ->
             { model | nodeData = Dict.fromList <| List.map (\i -> ( i.nodeId, i )) nodeInfos }
 
         SetWindowSize w h ->
             { model | windowSize = { width = w, height = h } }
+
+        SetSearchTerm searchTerm ->
+            { model | menu = { menu | searchTerm = searchTerm } }
+
+        OpenMenu ->
+            { model | menu = { menu | isOpen = True } }
 
         NoOp ->
             model
@@ -195,17 +220,23 @@ navbarHeight =
 
 moduleGraphLink : Route -> Element Msg
 moduleGraphLink currentRoute =
-    Input.button [ Element.height Element.fill, highlightNavWhen (currentRoute == ModuleDepGraph) ]
+    Input.button
+        [ Element.height Element.fill
+        , highlightNavWhen (currentRoute == ModuleDepGraph)
+        ]
         { onPress = Just <| UpdateImage <| SetRoute ModuleDepGraph
-        , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "module dependency graph"
+        , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "Module dependencies"
         }
 
 
 packageGraphLink : Route -> Element Msg
 packageGraphLink currentRoute =
-    Input.button [ Element.height Element.fill, highlightNavWhen (currentRoute == PackageDepGraph) ]
+    Input.button
+        [ Element.height Element.fill
+        , highlightNavWhen (currentRoute == PackageDepGraph)
+        ]
         { onPress = Just <| UpdateImage <| SetRoute PackageDepGraph
-        , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "package dependency graph"
+        , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "Package dependencies"
         }
 
 
@@ -222,14 +253,64 @@ nodePicker model =
                     ( True, "Focusing module: " ++ nodeInfo.nodeLabel )
 
                 ModuleDepGraph ->
-                    ( False, "Click a node to pick a module" )
+                    ( False, "Focus module" )
 
                 PackageDepGraph ->
-                    ( False, "..." )
+                    ( False, "Focus module" )
     in
-    Element.el [ Element.height Element.fill, highlightNavWhen isHighlighted ] <|
-        Element.el [ Element.centerY, Element.padding 10 ] <|
-            Element.text text
+    Element.el
+        ((if model.menu.isOpen then
+            [ Element.below (nodeMenu model.menu model.nodeData) ]
+
+          else
+            []
+         )
+            ++ [ Element.height Element.fill
+               , highlightNavWhen isHighlighted
+               ]
+        )
+        (Element.el
+            [ Element.centerY
+            , Element.padding 10
+            , Events.onClick OpenMenu
+            ]
+            (Element.text text)
+        )
+
+
+nodeMenu : Menu -> Dict NodeId NodeInfo -> Element Msg
+nodeMenu menu nodeData =
+    let
+        toItem : NodeInfo -> Element Msg
+        toItem nodeInfo =
+            Element.el
+                [ Events.onClick (UpdateImage <| SetRoute <| NodeContext nodeInfo.nodeId)
+                , Element.padding 2
+                ]
+                (Element.text nodeInfo.nodeLabel)
+
+        items : List (Element Msg)
+        items =
+            List.map toItem <|
+                List.filter (\i -> String.contains menu.searchTerm i.nodeLabel) <|
+                    List.sortBy .nodeLabel <|
+                        Dict.values nodeData
+
+        searchBox : Element Msg
+        searchBox =
+            Input.text []
+                { onChange = SetSearchTerm
+                , text = menu.searchTerm
+                , placeholder = Just (Input.placeholder [] (Element.text "filter modules"))
+                , label = Input.labelHidden "Module filter"
+                }
+    in
+    Element.column
+        [ Background.color Color.white
+        , Border.color Color.black
+        , Border.width 2
+        ]
+        (searchBox :: items)
 
 
 highlightNavWhen : Bool -> Element.Attribute Msg
@@ -250,8 +331,12 @@ nodeInfoDecoder =
         (Decode.field "group" (Decode.nullable Decode.string))
 
 
+type alias NodeId =
+    Int
+
+
 type alias NodeInfo =
-    { nodeId : Int
+    { nodeId : NodeId
     , nodeLabel : String
     , nodeGroup : Maybe String
     }
@@ -259,4 +344,7 @@ type alias NodeInfo =
 
 dummyNodeInfo : NodeInfo
 dummyNodeInfo =
-    { nodeId = -1, nodeLabel = "Node not found", nodeGroup = Nothing }
+    { nodeId = -1
+    , nodeLabel = "Node not found"
+    , nodeGroup = Nothing
+    }

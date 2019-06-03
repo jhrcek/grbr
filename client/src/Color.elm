@@ -1,4 +1,9 @@
-module Color exposing (lightBlue, lightGray)
+module Color exposing
+    ( black
+    , lightBlue
+    , lightGray
+    , white
+    )
 
 import Element
 
@@ -11,3 +16,13 @@ lightBlue =
 lightGray : Element.Color
 lightGray =
     Element.rgb255 211 211 211
+
+
+white : Element.Color
+white =
+    Element.rgb255 255 255 255
+
+
+black : Element.Color
+black =
+    Element.rgb255 0 0 0
