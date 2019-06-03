@@ -10,6 +10,7 @@ module Graph.DotBuilder
 import Control.Applicative (liftA2)
 import Control.Monad ((>=>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.Bool (bool)
 import Data.Function ((&))
 import Data.Graph.Inductive.Graph (Edge, LEdge, LNode, Node)
 import qualified Data.Graph.Inductive.Graph as Graph
@@ -43,15 +44,16 @@ generateModuleDepGraph genParams ModuleDependencies{depGraph} =
     liftIO $ runGraphviz dotGraph Svg "graph.svg"
   where
     gvParams = graphVizParams genParams
-    dotGraph = applyTred $ graphToDot gvParams depGraph
-    applyTred = if enableTransitiveReduction genParams then transitiveReduction else id
+    dotGraph = transitiveReductionWhen (enableTransitiveReduction genParams)
+               $ graphToDot gvParams depGraph
 
-generatePackageDepGraph :: MonadIO io => ModuleDependencies -> io FilePath
-generatePackageDepGraph ModuleDependencies{depGraph} =
+generatePackageDepGraph :: MonadIO io => GeneratorParams -> ModuleDependencies -> io FilePath
+generatePackageDepGraph genParams ModuleDependencies{depGraph} =
     liftIO $ runGraphviz dotGraph Svg "graph.svg"
   where
     dotGraph :: DotGraph Node
-    dotGraph = transitiveReduction $ graphToDot gvParams packageDepGraph
+    dotGraph = transitiveReductionWhen (enableTransitiveReduction genParams)
+               $ graphToDot gvParams packageDepGraph
 
     gvParams :: GraphvizParams Node Package () () Package
     gvParams = defaultParams
@@ -132,6 +134,9 @@ graphVizParams GeneratorParams{centralNode, clusteringEnabled}
             , style filled
             ]
         }
+
+transitiveReductionWhen :: Ord n => Bool -> DotGraph n -> DotGraph n
+transitiveReductionWhen = bool id transitiveReduction
 
 clusterByPackage :: (Node, NodeLabel)  -> NodeCluster ClusterLabel (Node, NodeLabel)
 clusterByPackage pair@(_, nodeLabel) = case packageName nodeLabel of

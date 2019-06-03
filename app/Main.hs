@@ -9,7 +9,7 @@ import Data.FileEmbed (embedFile)
 import Data.GraphViz.Commands (quitWithoutGraphviz)
 import Data.Text.Lazy (pack)
 import Graph.DotBuilder (GeneratorParams (..), generateModuleDepGraph,
-                         getNeighborhood, generatePackageDepGraph)
+                         generatePackageDepGraph, getNeighborhood)
 import Web.Browser (openBrowser)
 import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
 
@@ -34,8 +34,9 @@ main = do
       get "/" $ do
           params <- getGeneratorParams
           generateModuleDepGraph params modDeps >>= file
-      get "/packages" $
-          generatePackageDepGraph modDeps >>= file
+      get "/packages" $ do
+          params <- getGeneratorParams
+          generatePackageDepGraph params modDeps >>= file
       get "/node/:nodeId" $ do
           params <- getGeneratorParams
           case centralNode params of

@@ -183,20 +183,35 @@ view model =
 
 imageParameterControls : ImageUrl -> Element Msg
 imageParameterControls imageUrl =
-    Element.column [ Element.padding 10 ]
-        [ Input.checkbox []
-            { onChange = UpdateImage << ToggleClustering
-            , icon = Input.defaultCheckbox
-            , checked = imageUrl.enableClustering
-            , label = Input.labelRight [] (Element.text "clustering")
-            }
-        , Input.checkbox []
-            { onChange = UpdateImage << ToggleTransitiveReduction
-            , icon = Input.defaultCheckbox
-            , checked = imageUrl.enableTransitiveReduction
-            , label = Input.labelRight [] (Element.text "transitive reduction")
-            }
-        ]
+    let
+        clusteringCheckbox =
+            case imageUrl.route of
+                PackageDepGraph ->
+                    Nothing
+
+                _ ->
+                    Just <|
+                        Input.checkbox []
+                            { onChange = UpdateImage << ToggleClustering
+                            , icon = Input.defaultCheckbox
+                            , checked = imageUrl.enableClustering
+                            , label = Input.labelRight [] (Element.text "clustering")
+                            }
+
+        transitiveReductionCheckbox =
+            Just <|
+                Input.checkbox []
+                    { onChange = UpdateImage << ToggleTransitiveReduction
+                    , icon = Input.defaultCheckbox
+                    , checked = imageUrl.enableTransitiveReduction
+                    , label = Input.labelRight [] (Element.text "transitive reduction")
+                    }
+    in
+    Element.column [ Element.padding 10 ] <|
+        List.filterMap identity
+            [ transitiveReductionCheckbox
+            , clusteringCheckbox
+            ]
 
 
 navbar : Model -> Element Msg
@@ -250,13 +265,13 @@ nodePicker model =
                         nodeInfo =
                             Maybe.withDefault dummyNodeInfo <| Dict.get nodeId model.nodeData
                     in
-                    ( True, "Focusing module: " ++ nodeInfo.nodeLabel )
+                    ( True, "Module: " ++ nodeInfo.nodeLabel )
 
                 ModuleDepGraph ->
-                    ( False, "Focus module" )
+                    ( False, "Module" )
 
                 PackageDepGraph ->
-                    ( False, "Focus module" )
+                    ( False, "Module" )
     in
     Element.el
         ((if model.menu.isOpen then
