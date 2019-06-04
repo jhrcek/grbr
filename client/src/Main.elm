@@ -31,7 +31,7 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize SetWindowSize
+    Browser.Events.onResize GotWindowSize
 
 
 type alias Model =
@@ -82,7 +82,7 @@ setInitialWindowSize =
             (\result ->
                 case result of
                     Ok { viewport } ->
-                        SetWindowSize (round viewport.width) (round viewport.height)
+                        GotWindowSize (round viewport.width) (round viewport.height)
 
                     Err _ ->
                         NoOp
@@ -103,19 +103,19 @@ processNodesResponse =
 
 
 type Msg
-    = UpdateImage ImageMsg
+    = ImageUpdated ImageMsg
     | NodeInfosLoaded (List NodeInfo)
-    | SetWindowSize Int Int
-    | SetSearchTerm String
-    | OpenMenu
+    | GotWindowSize Int Int
+    | SearchTermChanged String
+    | MenuOpened
     | NoOp
 
 
 type ImageMsg
-    = ToggleTransitiveReduction Bool
-    | ToggleClustering Bool
-    | ChangeImageUrl String
-    | SetRoute Route
+    = TransitiveReductionToggled Bool
+    | ClusteringToggled Bool
+    | ImageUrlChanged String
+    | RouteChanged Route
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -126,7 +126,7 @@ update msg model =
 updatePure : Msg -> Model -> Model
 updatePure msg ({ menu, imageUrl } as model) =
     case msg of
-        UpdateImage imageMsg ->
+        ImageUpdated imageMsg ->
             { model
                 | imageUrl = updateImageConfig imageMsg imageUrl
                 , menu = { searchTerm = "", isOpen = False }
@@ -135,13 +135,13 @@ updatePure msg ({ menu, imageUrl } as model) =
         NodeInfosLoaded nodeInfos ->
             { model | nodeData = Dict.fromList <| List.map (\i -> ( i.nodeId, i )) nodeInfos }
 
-        SetWindowSize w h ->
+        GotWindowSize w h ->
             { model | windowSize = { width = w, height = h } }
 
-        SetSearchTerm searchTerm ->
+        SearchTermChanged searchTerm ->
             { model | menu = { menu | searchTerm = searchTerm } }
 
-        OpenMenu ->
+        MenuOpened ->
             { model | menu = { menu | isOpen = True } }
 
         NoOp ->
@@ -151,16 +151,16 @@ updatePure msg ({ menu, imageUrl } as model) =
 updateImageConfig : ImageMsg -> ImageUrl -> ImageUrl
 updateImageConfig msg imageUrl =
     case msg of
-        ToggleTransitiveReduction bool ->
+        TransitiveReductionToggled bool ->
             { imageUrl | enableTransitiveReduction = bool }
 
-        ToggleClustering bool ->
+        ClusteringToggled bool ->
             { imageUrl | enableClustering = bool }
 
-        ChangeImageUrl url ->
+        ImageUrlChanged url ->
             { imageUrl | route = Route.parseUrl url }
 
-        SetRoute route ->
+        RouteChanged route ->
             { imageUrl | route = route }
 
 
@@ -175,7 +175,7 @@ view model =
                     , attribute "data" (Route.toUrlString model.imageUrl)
                     , style "height" (String.fromInt (model.windowSize.height - navbarHeight) ++ "px")
                     , style "width" (String.fromInt model.windowSize.width ++ "px")
-                    , on "load" <| Decode.map (UpdateImage << ChangeImageUrl) <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
+                    , on "load" <| Decode.map (ImageUpdated << ImageUrlChanged) <| Decode.at [ "target", "contentWindow", "location", "href" ] Decode.string
                     ]
                     []
             ]
@@ -192,7 +192,7 @@ imageParameterControls imageUrl =
                 _ ->
                     Just <|
                         Input.checkbox []
-                            { onChange = UpdateImage << ToggleClustering
+                            { onChange = ImageUpdated << ClusteringToggled
                             , icon = Input.defaultCheckbox
                             , checked = imageUrl.enableClustering
                             , label = Input.labelRight [] (Element.text "clustering")
@@ -201,7 +201,7 @@ imageParameterControls imageUrl =
         transitiveReductionCheckbox =
             Just <|
                 Input.checkbox []
-                    { onChange = UpdateImage << ToggleTransitiveReduction
+                    { onChange = ImageUpdated << TransitiveReductionToggled
                     , icon = Input.defaultCheckbox
                     , checked = imageUrl.enableTransitiveReduction
                     , label = Input.labelRight [] (Element.text "transitive reduction")
@@ -239,7 +239,7 @@ moduleGraphLink currentRoute =
         [ Element.height Element.fill
         , highlightNavWhen (currentRoute == ModuleDepGraph)
         ]
-        { onPress = Just <| UpdateImage <| SetRoute ModuleDepGraph
+        { onPress = Just <| ImageUpdated <| RouteChanged ModuleDepGraph
         , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "Module dependencies"
         }
 
@@ -250,7 +250,7 @@ packageGraphLink currentRoute =
         [ Element.height Element.fill
         , highlightNavWhen (currentRoute == PackageDepGraph)
         ]
-        { onPress = Just <| UpdateImage <| SetRoute PackageDepGraph
+        { onPress = Just <| ImageUpdated <| RouteChanged PackageDepGraph
         , label = Element.el [ Element.centerY, Element.padding 10 ] <| Element.text "Package dependencies"
         }
 
@@ -287,7 +287,7 @@ nodePicker model =
         (Element.el
             [ Element.centerY
             , Element.padding 10
-            , Events.onClick OpenMenu
+            , Events.onClick MenuOpened
             ]
             (Element.text text)
         )
@@ -299,7 +299,7 @@ nodeMenu menu nodeData =
         toItem : NodeInfo -> Element Msg
         toItem nodeInfo =
             Element.el
-                [ Events.onClick (UpdateImage <| SetRoute <| NodeContext nodeInfo.nodeId)
+                [ Events.onClick (ImageUpdated <| RouteChanged <| NodeContext nodeInfo.nodeId)
                 , Element.padding 2
                 ]
                 (Element.text nodeInfo.nodeLabel)
@@ -314,7 +314,7 @@ nodeMenu menu nodeData =
         searchBox : Element Msg
         searchBox =
             Input.text []
-                { onChange = SetSearchTerm
+                { onChange = SearchTermChanged
                 , text = menu.searchTerm
                 , placeholder = Just (Input.placeholder [] (Element.text "filter modules"))
                 , label = Input.labelHidden "Module filter"
