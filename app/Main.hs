@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
@@ -48,15 +47,10 @@ main = do
                       Just neighborhood -> generateModuleDepGraph params neighborhood >>= file
 
 getGeneratorParams :: ActionM GeneratorParams
-getGeneratorParams = do
-    mNodeId <- getNodeIdParam
-    isCluster <- getClusterParam
-    isTred <- getTredParam
-    return $ GeneratorParams
-        { centralNode = mNodeId
-        , enableTransitiveReduction = isTred
-        , clusteringEnabled = isCluster
-        }
+getGeneratorParams = GeneratorParams
+    <$> getNodeIdParam
+    <*> getTredParam
+    <*> getClusterParam
 
 getClusterParam :: ActionM Bool
 getClusterParam = param "cluster" `rescue` (\_err -> pure False)
