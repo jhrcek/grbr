@@ -116,7 +116,7 @@ getNeighborhood nodeId md@ModuleDependencies{depGraph}
 type ModuleGraphParams = GraphvizParams Node NodeLabel EdgeLabel ClusterLabel NodeLabel
 
 graphVizParams :: GeneratorParams -> ModuleGraphParams
-graphVizParams GeneratorParams{centralNode, clusteringEnabled}
+graphVizParams GeneratorParams{centralNode, clusteringEnabled, enableTransitiveReduction}
     | clusteringEnabled = customizedParams
         { clusterBy = clusterByPackage
         , clusterID = \(Package pkgName) -> Str (fromStrict pkgName)
@@ -127,7 +127,9 @@ graphVizParams GeneratorParams{centralNode, clusteringEnabled}
     customizedParams = defaultParams
         { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
         , fmtNode = \(nodeId, nodeLabel) ->
-            [ URL $ "/node/" <> pack (show nodeId)
+            [ URL $ "/node/"    <> pack (show nodeId)
+                  <> "?cluster=" <> bool "false" "true" clusteringEnabled
+                  <> "&amp;tred=" <> bool "false" "true" enableTransitiveReduction
             , toLabelAttr clusteringEnabled nodeLabel
             , toColorAttr nodeLabel
             , toShapeAttr centralNode nodeId nodeLabel
