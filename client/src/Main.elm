@@ -298,11 +298,10 @@ nodeMenu menu nodeData =
     let
         toItem : NodeInfo -> Element Msg
         toItem nodeInfo =
-            Element.el
-                [ Events.onClick (ImageUpdated <| RouteChanged <| NodeContext nodeInfo.nodeId)
-                , Element.padding 2
-                ]
-                (Element.text nodeInfo.nodeLabel)
+            Input.button [ Element.padding 2 ]
+                { onPress = Just <| ImageUpdated <| RouteChanged <| NodeContext nodeInfo.nodeId
+                , label = Element.text nodeInfo.nodeLabel
+                }
 
         items : List (Element Msg)
         items =
