@@ -24,6 +24,8 @@ library:
   dependencies:
     - aeson
     - containers
+    - directory
+    - filepath
     - fgl
     - foldl
     - graphviz

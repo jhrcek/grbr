@@ -25,6 +25,7 @@ import Data.GraphViz.Attributes.Complete (Attribute (Label, RankDir, URL),
                                           Label (StrLabel), RankDir (FromLeft),
                                           Shape (Box3D, BoxShape, Ellipse))
 import Data.GraphViz.Commands (GraphvizOutput (Svg), runGraphviz)
+import Data.GraphViz.Types (PrintDotRepr)
 import Data.GraphViz.Types.Canonical (DotGraph)
 import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs),
                                         GraphID (Str))
@@ -38,10 +39,12 @@ import Data.Text.Lazy (fromStrict, pack)
 import Elm.ClassifyPackages (Package (..), knownPackages)
 import Graph.Types (ClusterLabel, EdgeLabel, ModuleDependencies (..), NodeLabel,
                     isAppModule, moduleName, packageName)
+import System.Directory (getTemporaryDirectory)
+import System.FilePath ((</>))
 
 generateModuleDepGraph :: MonadIO io => GeneratorParams -> ModuleDependencies -> io FilePath
 generateModuleDepGraph genParams ModuleDependencies{depGraph} =
-    liftIO $ runGraphviz dotGraph Svg "graph.svg"
+    generateGraphFile dotGraph
   where
     gvParams = graphVizParams genParams
     dotGraph = transitiveReductionWhen (enableTransitiveReduction genParams)
@@ -49,7 +52,7 @@ generateModuleDepGraph genParams ModuleDependencies{depGraph} =
 
 generatePackageDepGraph :: MonadIO io => GeneratorParams -> ModuleDependencies -> io FilePath
 generatePackageDepGraph genParams ModuleDependencies{depGraph} =
-    liftIO $ runGraphviz dotGraph Svg "graph.svg"
+    generateGraphFile dotGraph
   where
     dotGraph :: DotGraph Node
     dotGraph = transitiveReductionWhen (enableTransitiveReduction genParams)
@@ -107,6 +110,12 @@ generatePackageDepGraph genParams ModuleDependencies{depGraph} =
             (fromId, m1) = lookupOrCreateNewId pkgFrom m0
             (toId, m2) = lookupOrCreateNewId pkgTo m1
 
+
+
+generateGraphFile :: (MonadIO io, PrintDotRepr g n) => g n -> io FilePath
+generateGraphFile dotGraph = liftIO $ do
+    tmpDir <- getTemporaryDirectory
+    runGraphviz dotGraph Svg (tmpDir </> "graph.svg")
 
 getNeighborhood :: Node -> ModuleDependencies -> Maybe ModuleDependencies
 getNeighborhood nodeId md@ModuleDependencies{depGraph}
