@@ -1,6 +1,6 @@
 { mkDerivation, aeson, base, bytestring, containers, directory, fgl
 , file-embed, filepath, foldl, graphviz, hpack, open-browser
-, scotty, stdenv, text, time, turtle, vector
+, scotty, stdenv, text, time, turtle, vector, gf
 }:
 mkDerivation {
   pname = "grbr";

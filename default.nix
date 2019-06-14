@@ -3,7 +3,7 @@ let
   client = import ./nix/client.nix;
 
   config = {
-    packageOverrides = pkgs: rec {
+    packageOverrides = pkgs: {
       haskellPackages =
         pkgs.haskellPackages.override {
           overrides = haskellPkgsNew: haskellPkgsOld: {
@@ -15,7 +15,7 @@ let
                     mkdir -p client/dist/js
                     cp ${client {}}/Main.js client/dist/js/elm.js
                   '';
-                  executableHaskellDepends = oldDerivation.executableHaskellDepends ++ [ pkgs.graphviz ];
+                  executableSystemDepends = [ pkgs.graphviz ];
                 })
               );
           };
