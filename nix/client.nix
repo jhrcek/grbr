@@ -26,7 +26,6 @@ let
       installPhase = let
         elmfile = module: "${srcdir}/${builtins.replaceStrings ["."] ["/"] module}.elm";
       in ''
-        ls -la
         mkdir -p $out/share/doc
         ${lib.concatStrings (map (module: ''
           echo "compiling ${elmfile module}"

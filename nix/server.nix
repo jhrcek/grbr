@@ -17,7 +17,7 @@ mkDerivation {
     base bytestring file-embed graphviz open-browser scotty text
   ];
   testHaskellDepends = [ base text ];
-  preConfigure = "hpack";
+  prePatch = "hpack";
   homepage = "https://github.com/jhrcek/grbr#readme";
   license = stdenv.lib.licenses.bsd3;
 }
