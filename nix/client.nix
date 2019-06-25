@@ -37,7 +37,6 @@ in mkDerivation {
   name = "elm-app-0.1.0";
   srcs = ./elm-srcs.nix;
   src = ../client;
-  versionsDat = ./versions.dat;
   targets = ["Main"];
   srcdir = "./src";
 }
