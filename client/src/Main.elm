@@ -260,7 +260,7 @@ nodePicker model =
     let
         ( isHighlighted, text ) =
             case model.imageUrl.route of
-                NodeContext nodeId ->
+                ModuleContext nodeId ->
                     let
                         nodeInfo =
                             Maybe.withDefault dummyNodeInfo <| Dict.get nodeId model.nodeData
@@ -299,7 +299,7 @@ nodeMenu menu nodeData =
         toItem : NodeInfo -> Element Msg
         toItem nodeInfo =
             Input.button [ Element.padding 2 ]
-                { onPress = Just <| ImageUpdated <| RouteChanged <| NodeContext nodeInfo.nodeId
+                { onPress = Just <| ImageUpdated <| RouteChanged <| ModuleContext nodeInfo.nodeId
                 , label = Element.text nodeInfo.nodeLabel
                 }
 

@@ -22,21 +22,21 @@ main = do
   let (nodeCount, edgeCount) = DepGraph.getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount
          <> " nodes and " <> show edgeCount <> " edges"
-  _ <- openBrowser "http://localhost:3000/index.html"
+  _ <- openBrowser "http://localhost:3000/"
   scotty 3000 $ do
-      get "/index.html" $
+      get "/" $
           raw $ fromStrict $(embedFile "client/dist/index.html")
       get "/elm.js" $
           raw $ fromStrict $(embedFile "client/dist/js/elm.js")
       get "/nodes" $
           json modDeps
-      get "/" $ do
+      get "/modules" $ do
           params <- getGeneratorParams
           generateModuleDepGraph params modDeps >>= file
       get "/packages" $ do
           params <- getGeneratorParams
           generatePackageDepGraph params modDeps >>= file
-      get "/node/:nodeId" $ do
+      get "/modules/:nodeId" $ do
           params <- getGeneratorParams
           case centralNode params of
               Nothing -> text "You must provide node ID in the URL!"

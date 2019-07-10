@@ -7,13 +7,13 @@ module Route exposing
 
 import Url
 import Url.Builder exposing (string)
-import Url.Parser exposing ((</>), Parser, int, map, oneOf, parse, s, top)
+import Url.Parser exposing ((</>), Parser, int, map, oneOf, parse, s)
 
 
 type Route
     = ModuleDepGraph
     | PackageDepGraph
-    | NodeContext Int
+    | ModuleContext Int
 
 
 type alias ImageUrl =
@@ -33,9 +33,9 @@ parseUrl urlStr =
 routeParser : Parser (Route -> a) a
 routeParser =
     oneOf
-        [ map ModuleDepGraph top
+        [ map ModuleDepGraph (s "modules")
+        , map ModuleContext (s "modules" </> int)
         , map PackageDepGraph (s "packages")
-        , map NodeContext (s "node" </> int)
         ]
 
 
@@ -51,13 +51,13 @@ routePieces : Route -> List String
 routePieces route =
     case route of
         ModuleDepGraph ->
-            []
+            [ "modules" ]
 
         PackageDepGraph ->
             [ "packages" ]
 
-        NodeContext nodeId ->
-            [ "node", String.fromInt nodeId ]
+        ModuleContext nodeId ->
+            [ "modules", String.fromInt nodeId ]
 
 
 showBool : Bool -> String

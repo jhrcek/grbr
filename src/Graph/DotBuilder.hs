@@ -136,7 +136,7 @@ graphVizParams GeneratorParams{centralNode, clusteringEnabled, enableTransitiveR
     customizedParams = defaultParams
         { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
         , fmtNode = \(nodeId, nodeLabel) ->
-            [ URL $ "/node/"    <> pack (show nodeId)
+            [ URL $ "/modules/"    <> pack (show nodeId)
                   <> "?cluster=" <> bool "false" "true" clusteringEnabled
                   <> "&amp;tred=" <> bool "false" "true" enableTransitiveReduction
             , toLabelAttr clusteringEnabled nodeLabel
