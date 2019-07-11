@@ -9,14 +9,12 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson base containers directory fgl filepath foldl graphviz text
-    time turtle vector
+    aeson base bytestring containers directory fgl file-embed filepath
+    foldl graphviz open-browser scotty text time turtle vector
   ];
   libraryToolDepends = [ hpack ];
-  executableHaskellDepends = [
-    base bytestring file-embed graphviz open-browser scotty text
-  ];
-  testHaskellDepends = [ base text ];
+  executableHaskellDepends = [ base ];
+  testHaskellDepends = [ base ];
   preConfigure = "hpack";
   homepage = "https://github.com/jhrcek/grbr#readme";
   license = stdenv.lib.licenses.bsd3;

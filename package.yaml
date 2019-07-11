@@ -14,7 +14,6 @@ description:         Please see the README on GitHub at <https://github.com/jhrc
 
 dependencies:
 - base >= 4.7 && < 5
-- text
 
 ghc-options:
 - -Wall
@@ -23,15 +22,21 @@ library:
   source-dirs: src
   dependencies:
     - aeson
+    - bytestring
     - containers
     - directory
+    - file-embed
     - filepath
     - fgl
     - foldl
     - graphviz
+    - open-browser
+    - scotty
+    - text
     - time
     - turtle
     - vector
+
 executables:
   grbr:
     main:                Main.hs
@@ -41,12 +46,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - bytestring
-    - file-embed
-    - graphviz
     - grbr
-    - open-browser
-    - scotty
 
 tests:
   grbr-test:
