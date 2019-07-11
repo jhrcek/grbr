@@ -3,14 +3,16 @@
 {-# LANGUAGE TemplateHaskell     #-}
 module Server where
 
-import Data.ByteString.Lazy (fromStrict)
+import qualified Data.ByteString.Lazy as LBS
 import Data.FileEmbed (embedFile)
 import Data.GraphViz.Commands (quitWithoutGraphviz)
-import Data.Text.Lazy (pack)
+import Data.Text.Lazy (Text, pack)
 import Graph.DotBuilder (GeneratorParams (..), generateModuleDepGraph,
                          generatePackageDepGraph, getNeighborhood)
+import Network.HTTP.Types (notFound404)
 import Web.Browser (openBrowser)
-import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
+import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, status,
+                   text)
 
 import qualified Elm.DepGraph as DepGraph
 
@@ -25,9 +27,9 @@ main = do
   _ <- openBrowser "http://localhost:3000/"
   scotty 3000 $ do
       get "/" $
-          raw $ fromStrict $(embedFile "client/dist/index.html")
+          raw $ LBS.fromStrict $(embedFile "client/dist/index.html")
       get "/elm.js" $
-          raw $ fromStrict $(embedFile "client/dist/js/elm.js")
+          raw $ LBS.fromStrict $(embedFile "client/dist/js/elm.js")
       get "/nodes" $
           json modDeps
       get "/modules" $ do
@@ -39,12 +41,18 @@ main = do
       get "/modules/:nodeId" $ do
           params <- getGeneratorParams
           case centralNode params of
-              Nothing -> text "You must provide node ID in the URL!"
+              Nothing -> notFound "You must provide node ID in the URL!"
               Just nodeId ->
                   case getNeighborhood nodeId modDeps of
-                      Nothing -> text $ "This graph doesn't have node with ID " <> pack (show nodeId)
-                                     <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
+                      Nothing -> notFound $
+                          "This graph doesn't have node with ID " <> pack (show nodeId)
+                          <> ". Valid node IDs are 0 - " <> pack (show (nodeCount - 1))
                       Just neighborhood -> generateModuleDepGraph params neighborhood >>= file
+
+notFound :: Text -> ActionM ()
+notFound errorText = do
+    status notFound404
+    text errorText
 
 getGeneratorParams :: ActionM GeneratorParams
 getGeneratorParams = GeneratorParams

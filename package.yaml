@@ -30,6 +30,7 @@ library:
     - fgl
     - foldl
     - graphviz
+    - http-types
     - open-browser
     - scotty
     - text
