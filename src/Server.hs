@@ -4,24 +4,26 @@
 module Server where
 
 import qualified Data.ByteString.Lazy as LBS
+import qualified Graph.Loader as Loader
+
 import Data.FileEmbed (embedFile)
 import Data.GraphViz.Commands (quitWithoutGraphviz)
 import Data.Text.Lazy (Text, pack)
+import Graph (getNodeAndEdgeCounts)
 import Graph.DotBuilder (GeneratorParams (..), generateModuleDepGraph,
                          generatePackageDepGraph, getNeighborhood)
 import Network.HTTP.Types (notFound404)
+import Turtle (pwd)
 import Web.Browser (openBrowser)
 import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, status,
                    text)
-
-import qualified Elm.DepGraph as DepGraph
 
 main :: IO ()
 main = do
   quitWithoutGraphviz "This tool requires graphviz for diagram generation.\n\
                       \See https://graphviz.gitlab.io/download/ for installation instructions."
-  modDeps <- DepGraph.loadModuleDependencies
-  let (nodeCount, edgeCount) = DepGraph.getNodeAndEdgeCounts modDeps
+  modDeps <- Loader.loadModuleGraph =<< pwd
+  let (nodeCount, edgeCount) = getNodeAndEdgeCounts modDeps
   putStrLn $ "Loaded dependency graph with " <> show nodeCount
          <> " nodes and " <> show edgeCount <> " edges"
   _ <- openBrowser "http://localhost:3000/"
