@@ -13,9 +13,15 @@ import Web.Browser (openBrowser)
 import Web.Scotty (ActionM, file, get, json, param, raw, rescue, scotty, text)
 
 import qualified Elm.DepGraph as DepGraph
+import qualified GHC.IO.Encoding as Encoding
 
 main :: IO ()
 main = do
+  print =<< Encoding.getLocaleEncoding
+  print =<< Encoding.getFileSystemEncoding
+  Encoding.setFileSystemEncoding Encoding.utf8
+  Encoding.setLocaleEncoding Encoding.utf8
+
   quitWithoutGraphviz "This tool requires graphviz for diagram generation.\n\
                       \See https://graphviz.gitlab.io/download/ for installation instructions."
   modDeps <- DepGraph.loadModuleDependencies
