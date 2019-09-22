@@ -20,7 +20,7 @@ Note that `elm-analyse` and `graphviz` are also installed to the system along si
 ```
 $ git clone git@github.com:jhrcek/grbr.git
 $ cd grbr
-$ nix-env -i -f nix/release.nix
+$ nix-env -if nix/release.nix
 ```
 
 ## Usage
