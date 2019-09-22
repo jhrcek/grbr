@@ -7,13 +7,17 @@ module Graph.DotBuilder
     , generatePackageDepGraph
     ) where
 
+import qualified Data.Graph.Inductive.Graph as Graph
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import qualified Gwi
+
 import Control.Applicative (liftA2)
 import Control.Monad ((>=>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Bool (bool)
 import Data.Function ((&))
 import Data.Graph.Inductive.Graph (Edge, LEdge, LNode, Node)
-import qualified Data.Graph.Inductive.Graph as Graph
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.GraphViz (GraphvizParams, NodeCluster (C, N), clusterBy, clusterID,
                       defaultParams, fmtCluster, fmtNode, globalAttributes,
@@ -30,15 +34,12 @@ import Data.GraphViz.Types.Canonical (DotGraph)
 import Data.GraphViz.Types.Generalised (GlobalAttributes (GraphAttrs),
                                         GraphID (Str))
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Text (Text)
 import Data.Text.Lazy (fromStrict, pack)
-import Elm.ClassifyPackages (Package (..), knownPackages)
-import Graph.Types (ClusterLabel, EdgeLabel, ModuleDependencies (..), NodeLabel,
-                    isAppModule, moduleName, packageName)
+import Graph (ClusterLabel, EdgeLabel, ModuleDependencies (..), NodeLabel,
+              Package (..), isAppModule, moduleName, packageName)
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 
@@ -63,7 +64,7 @@ generatePackageDepGraph genParams ModuleDependencies{depGraph} =
         { globalAttributes = [ GraphAttrs [RankDir FromLeft] ]
         , fmtNode = \(_nodeId, p@(Package pkgName)) ->
             [ textLabel pkgName
-            , fillColor . fromMaybe White . lookup p $ zip knownPackages [ LightBlue .. ]
+            , fillColor . fromMaybe White . lookup p $ zip Gwi.knownPackages [ LightBlue .. ]
             , style filled
             , shape BoxShape
             ]
@@ -175,7 +176,7 @@ textLabel = Label . StrLabel . fromStrict
 toColorAttr :: NodeLabel -> Attribute
 toColorAttr nodeLabel = fillColor $ fromMaybe White $ do
     pkg <- packageName nodeLabel
-    lookup pkg $ zip knownPackages [ LightBlue .. ]
+    lookup pkg $ zip Gwi.knownPackages [ LightBlue .. ]
 
 data GeneratorParams = GeneratorParams
   { centralNode               :: Maybe Node

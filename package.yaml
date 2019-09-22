@@ -25,6 +25,7 @@ library:
     - bytestring
     - containers
     - directory
+    - elm
     - file-embed
     - filepath
     - fgl
