@@ -70,10 +70,12 @@ extractPackageAndModule elmFile = do
     toPackage :: [Text] -> Shell Package
     toPackage pathPieces_ = case hits of
         [c]  -> return c
-        []   -> die $ format
-            ("Failed to determine package for file:\
-             \\n  file = "%fp%
-             "\n  known packages = "%w) elmFile knownPackages
+        []   -> do
+            printf ("Failed to determine package for file:\
+                   \\n  file = "%fp%
+                   "\n  known packages = "%w) elmFile knownPackages
+            pure $ Package "<unknown>"
+             
         more -> die $ format
             ("Multiple packages matche file:\
              \\n  file = "%fp%
